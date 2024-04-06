@@ -24,9 +24,12 @@ class BunnyMateHelper
             return '';
         }
         if ($pathOrAsset instanceof Asset) {
-            $path = $pathOrAsset->getUrl();
+            $path = $pathOrAsset->getUrl() ?? '';
         } else {
             $path = $pathOrAsset;
+        }
+        if (empty($path)) {
+            return '';
         }
         return static::getPullZone($pullZoneHandle)
             ->getUrl($path);
