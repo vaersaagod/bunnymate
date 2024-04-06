@@ -16,6 +16,12 @@ This plugin requires Craft CMS 4.0.0 or later.
 
 This is a [private plugin](https://craftcms.com/docs/5.x/extend/plugin-guide.html#private-plugins), made for Værsågod and friends.
 
+## Migrating from `vaersaagod/bunny`  
+
+1. `ddev craft plugin/uninstall bunny && ddev composer remove vaersaagod/bunny`
+2. `ddev composer require vaersaagod/bunnymate && ddev craft plugin/install _bunnymate`
+3. Rename `config/bunny.php` to `config/_bunnymate.php`
+
 ## Configuration
 
 ```
