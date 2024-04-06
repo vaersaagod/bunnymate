@@ -1,6 +1,6 @@
 <?php
 
-namespace vaersaagod\bunny\models;
+namespace vaersaagod\bunnymate\models;
 
 use craft\base\Model;
 
@@ -8,12 +8,12 @@ class Settings extends Model
 {
 
     /** @var bool */
-    public $pullingEnabled = true;
+    public bool $pullingEnabled = true;
 
     /** @var array[] */
-    public $pullZones = [];
+    public array $pullZones = [];
 
     /** @var string */
-    public $defaultPullZone;
+    public string $defaultPullZone;
 
 }

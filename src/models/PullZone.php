@@ -1,22 +1,22 @@
 <?php
 
-namespace vaersaagod\bunny\models;
+namespace vaersaagod\bunnymate\models;
 
 use Craft;
 use craft\base\Model;
 use craft\helpers\StringHelper;
 use craft\helpers\UrlHelper;
 
-use vaersaagod\bunny\Bunny;
+use vaersaagod\bunnymate\BunnyMate;
 
 class PullZone extends Model
 {
 
     /** @var bool */
-    public $enabled = true;
+    public bool $enabled = true;
 
     /** @var string */
-    public $hostname;
+    public string $hostname;
 
     /**
      * @param array $config
@@ -43,7 +43,7 @@ class PullZone extends Model
         $url = StringHelper::removeLeft($path, $baseSiteUrl);
         if (
             !$this->enabled
-            || !Bunny::getInstance()->getSettings()->pullingEnabled
+            || !BunnyMate::getInstance()->getSettings()->pullingEnabled
             || UrlHelper::isAbsoluteUrl($url)
             || UrlHelper::isProtocolRelativeUrl($url)
         ) {

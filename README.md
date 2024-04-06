@@ -1,22 +1,20 @@
-# Bunny plugin for Craft CMS 4.x
+# BunnyMate
+
+Keeping your bunny finely-tuned for a hoppy life, mate!
+
+<img src="https://github.com/vaersaagod/bunnymate/blob/main/src/icon.svg" width="200" height="200" alt="Logo">
+
+## Description
+
+BunnyMate integrates [BunnyCDN](https://bunny.net) with Craft CMS.
 
 ## Requirements
 
 This plugin requires Craft CMS 4.0.0 or later.
 
-## Installation
+## Disclaimer
 
-To install the plugin, follow these instructions.
-
-1. Open your terminal and go to your Craft project:
-
-        cd /path/to/project
-
-2. Then tell Composer to load the plugin:
-
-        composer require vaersaagod/bunny
-
-3. In the Control Panel, go to Settings → Plugins and click the “Install” button for Bunny.
+This is a [private plugin](https://craftcms.com/docs/5.x/extend/plugin-guide.html#private-plugins), made for Værsågod and friends.
 
 ## Configuration
 
@@ -27,7 +25,7 @@ return [
     'pullingEnabled' => true,
     'pullZones' => [
         'default' => [
-            'hostname' => 'https://snohetta.b-cdn.net',
+            'hostname' => 'https://awesome-project.b-cdn.net',
             'enabled' => true,
         ],
     ],
@@ -41,15 +39,3 @@ return [
 {{ bunnyPullUrl('/lorem/ipsum') }}
 {{ bunnyPullUrl('/lorem/ipsum', 'anotherZone') }}
 ```
-
-## Price, license and support
-
-The plugin is released under the MIT license. It's made for Værsågod and friends, and no support
-is given. Submitted issues are resolved if it scratches an itch.
-
-## Changelog
-
-See [CHANGELOG.MD](https://raw.githubusercontent.com/vaersaagod/bunny/master/CHANGELOG.md).
-
-
-Brought to you by [Værsågod](https://vaersaagod.no)

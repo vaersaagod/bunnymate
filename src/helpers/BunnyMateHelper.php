@@ -1,17 +1,17 @@
 <?php
 
-namespace vaersaagod\bunny\helpers;
+namespace vaersaagod\bunnymate\helpers;
 
 use Craft;
 use craft\helpers\StringHelper;
 use craft\helpers\UrlHelper;
 
-use vaersaagod\bunny\Bunny;
-use vaersaagod\bunny\models\PullZone;
+use vaersaagod\bunnymate\BunnyMate;
+use vaersaagod\bunnymate\models\PullZone;
 
 use yii\base\InvalidConfigException;
 
-class BunnyHelper
+class BunnyMateHelper
 {
 
     /**
