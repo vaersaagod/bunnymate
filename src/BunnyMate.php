@@ -21,7 +21,7 @@ class BunnyMate extends Plugin
     public bool $hasCpSection = false;
 
     /** @inheritdoc */
-    public function init(): void
+    public function init()
     {
         parent::init();
 
@@ -35,7 +35,9 @@ class BunnyMate extends Plugin
      */
     public function getSettings(): Settings
     {
-        return $this->createSettingsModel();
+        /** @var Settings $settings */
+        $settings = parent::getSettings();
+        return $settings;
     }
 
     /**

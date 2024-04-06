@@ -35,7 +35,11 @@ return [
 
 ## Usage
 
+BunnyMate provides a global Twig function `bunnyPullUrl()`, which can be used to generate a Bunny CDN pullzone URL:  
+
 ```
-{{ bunnyPullUrl('/lorem/ipsum') }}
-{{ bunnyPullUrl('/lorem/ipsum', 'anotherZone') }}
+{% set bunnyUrl = bunnyPullUrl(asset) %}
+{% set bunnyUrl = bunnyPullUrl(siteUrl('lorem/ipsim') %}
+{% set bunnyUrl = bunnyPullUrl('lorem/ipsum') %}
+{% set bunnyUrl = bunnyPullUrl('/lorem/ipsum', 'anotherZone') %}
 ```

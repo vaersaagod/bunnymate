@@ -13,7 +13,7 @@ class Settings extends Model
     /** @var array[] */
     public array $pullZones = [];
 
-    /** @var string */
-    public string $defaultPullZone;
+    /** @var string|null */
+    public ?string $defaultPullZone = null;
 
 }

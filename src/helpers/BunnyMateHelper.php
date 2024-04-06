@@ -2,9 +2,7 @@
 
 namespace vaersaagod\bunnymate\helpers;
 
-use Craft;
-use craft\helpers\StringHelper;
-use craft\helpers\UrlHelper;
+use craft\elements\Asset;
 
 use vaersaagod\bunnymate\BunnyMate;
 use vaersaagod\bunnymate\models\PullZone;
@@ -15,29 +13,41 @@ class BunnyMateHelper
 {
 
     /**
-     * @param string $path
-     * @param string|null $pullzone
+     * @param string|Asset|null $pathOrAsset
+     * @param string|null $pullZoneHandle
      * @return string
      * @throws \Exception
      */
-    public static function bunnyPullUrl(string $path = '', ?string $pullzone = null): string
+    public static function bunnyPullUrl(string|Asset|null $pathOrAsset = '', ?string $pullZoneHandle = null): string
     {
-        $pullZone = static::getPullZone($pullzone);
-        return $pullZone->getUrl($path);
+        if (empty($pathOrAsset)) {
+            return '';
+        }
+        if ($pathOrAsset instanceof Asset) {
+            $path = $pathOrAsset->getUrl();
+        } else {
+            $path = $pathOrAsset;
+        }
+        return static::getPullZone($pullZoneHandle)
+            ->getUrl($path);
     }
 
     /**
-     * @param string|null $key
-     * @return array
-     * @throws \Exception
+     * @param string|null $pullZoneHandle
+     * @return PullZone
+     * @throws InvalidConfigException
+     * @throws \craft\errors\SiteNotFoundException
      */
-    public static function getPullZone(?string $key = null): PullZone
+    public static function getPullZone(?string $pullZoneHandle = null): PullZone
     {
-        $settings = Bunny::getInstance()->getSettings();
-        $key = $key ?? $settings->defaultPullZone;
-        $pullZoneConfig = $settings->pullZones[$key] ?? null;
+        $settings = BunnyMate::getInstance()->getSettings();
+        $pullZoneHandle = $pullZoneHandle ?? $settings->defaultPullZone ?? null;
+        if (empty($pullZoneHandle)) {
+            throw new \RuntimeException("No pull zone handle defined");
+        }
+        $pullZoneConfig = $settings->pullZones[$pullZoneHandle] ?? null;
         if (!$pullZoneConfig) {
-            throw new InvalidConfigException("Invalid pull zone \"$key\"");
+            throw new InvalidConfigException("Invalid pull zone \"$pullZoneHandle\"");
         }
         return new PullZone($pullZoneConfig);
     }

@@ -19,27 +19,29 @@ class PullZone extends Model
     public string $hostname;
 
     /**
-     * @param array $config
+     * @param $config
      * @throws \craft\errors\SiteNotFoundException
      */
     public function __construct($config = [])
     {
-        parent::__construct($config);
-        if (!UrlHelper::isFullUrl($this->hostname)) {
-            $this->hostname = StringHelper::ensureLeft($this->hostname, 'https://');
+        $hostname = $config['hostname'];
+        if (!UrlHelper::isFullUrl($hostname)) {
+            $hostname = StringHelper::ensureLeft($hostname, 'https://');
         } else {
-            $this->hostname = UrlHelper::urlWithScheme($this->hostname, 'https');
+            $hostname = UrlHelper::urlWithScheme($hostname, 'https');
         }
-        $this->hostname = StringHelper::removeRight($this->hostname, '/');
+        $config['hostname'] = StringHelper::removeRight($hostname, '/');
+        parent::__construct($config);
     }
 
     /**
      * @param string $path
      * @return string
+     * @throws \craft\errors\SiteNotFoundException
      */
     public function getUrl(string $path = ''): string
     {
-        $baseSiteUrl = Craft::getAlias('@web');
+        $baseSiteUrl = Craft::$app->getSites()->getCurrentSite()->getBaseUrl();
         $url = StringHelper::removeLeft($path, $baseSiteUrl);
         if (
             !$this->enabled
