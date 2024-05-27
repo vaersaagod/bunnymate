@@ -1,7 +1,6 @@
 # BunnyMate Changelog
 
-## 1.0.0 - 2024-04-06
+## 2.0.0 - 2024-05-27
 
 ### Added
-- Initial release for the Bunny => BunnyMate rebrand
-- Added the ability to pass assets directly to the `bunnyPullUrl()` Twig function
+- Craft 5 compatibility release

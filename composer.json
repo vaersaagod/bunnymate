@@ -2,7 +2,7 @@
   "name": "vaersaagod/bunnymate",
   "description": "Keeping your bunny finely-tuned for a hoppy life, mate!",
   "type": "craft-plugin",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "keywords": [
     "craft",
     "cms",
@@ -22,8 +22,8 @@
     }
   ],
   "require": {
-    "php": "^8.1",
-    "craftcms/cms": "^4.0.0"
+    "php": "^8.2",
+    "craftcms/cms": "^5.1.0"
   },
   "autoload": {
     "psr-4": {
