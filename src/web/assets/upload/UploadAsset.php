@@ -31,6 +31,7 @@ class UploadAsset extends AssetBundle
         $this->js = [
             'tus.min.js',
             'bunnymate-upload.js',
+            'bunnymate-stream-uploader.js',
         ];
 
         $this->css = [

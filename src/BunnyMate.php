@@ -12,11 +12,13 @@ use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\ReplaceAssetEvent;
 use craft\helpers\ElementHelper;
+use craft\helpers\Json;
 use craft\helpers\Queue;
 use craft\services\Assets;
 use craft\services\Fs;
 use craft\services\Utilities;
 use craft\web\UrlManager;
+use craft\web\View;
 
 use vaersaagod\bunnymate\behaviors\VideoAssetBehavior;
 use vaersaagod\bunnymate\fs\BunnyStorageFs;
@@ -26,6 +28,7 @@ use vaersaagod\bunnymate\services\Purge;
 use vaersaagod\bunnymate\services\Stream;
 use vaersaagod\bunnymate\services\Videos;
 use vaersaagod\bunnymate\utilities\VideoUpload;
+use vaersaagod\bunnymate\web\assets\upload\UploadAsset;
 use vaersaagod\bunnymate\web\twig\BunnyMateExtension;
 
 use yii\base\Event;
@@ -91,6 +94,7 @@ class BunnyMate extends Plugin
         $this->_registerAssetCleanup();
         $this->_registerUtilities();
         $this->_registerVideoAutoUpload();
+        $this->_registerStreamUploader();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -360,6 +364,63 @@ class BunnyMate extends Plugin
                 $this->getVideos()->deleteVideoForAsset($asset);
             }
         );
+    }
+
+    /**
+     * Swaps Craft's asset uploader for one that sends videos straight to Bunny Stream.
+     *
+     * Craft dispatches uploaders by filesystem class, so this registers for every filesystem
+     * used by a Bunny Stream volume. Volumes sharing that filesystem but not mapped to a
+     * library are unaffected: the uploader checks the target folder and falls through to
+     * Craft's own behaviour for anything it shouldn't handle.
+     *
+     * @return void
+     */
+    private function _registerStreamUploader(): void
+    {
+        $request = Craft::$app->getRequest();
+        if (!$request->getIsCpRequest() || $request->getIsConsoleRequest() || $request->getIsAjax()) {
+            return;
+        }
+
+        Craft::$app->onInit(function () {
+            $fsTypes = $this->_getStreamFsTypes();
+            if (empty($fsTypes)) {
+                return;
+            }
+            $view = Craft::$app->getView();
+            $view->registerAssetBundle(UploadAsset::class);
+            $view->registerJs(
+                sprintf('Craft.BunnyMate.registerStreamUploader(%s);', Json::encode($fsTypes)),
+                View::POS_END,
+            );
+        });
+    }
+
+    /**
+     * Returns the distinct filesystem classes used by volumes mapped to a video library.
+     *
+     * @return string[]
+     */
+    private function _getStreamFsTypes(): array
+    {
+        $settings = $this->getSettings();
+        if (empty($settings->volumeVideoLibraries)) {
+            return [];
+        }
+        $fsTypes = [];
+        foreach (array_keys($settings->volumeVideoLibraries) as $volumeHandle) {
+            $volume = Craft::$app->getVolumes()->getVolumeByHandle($volumeHandle);
+            if (!$volume) {
+                continue;
+            }
+            try {
+                $fsTypes[] = $volume->getFs()::class;
+            } catch (\Throwable $e) {
+                Craft::error($e->getMessage(), __METHOD__);
+            }
+        }
+        return array_values(array_unique($fsTypes));
     }
 
 }

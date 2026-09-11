@@ -156,7 +156,11 @@ Assets backed by Bunny Stream hold no file of their own, so `asset.url` would ot
 
 ### Uploading
 
-BunnyMate adds a **Bunny Video Upload** utility, which uploads video files straight from the browser to Bunny over the [TUS](https://tus.io) resumable protocol. The file never passes through PHP, so `upload_max_filesize`, `post_max_size` and request timeouts don't apply, and an interrupted upload resumes rather than restarting.
+Videos uploaded to a mapped volume through the regular **Assets** screen go straight from the browser to Bunny over the [TUS](https://tus.io) resumable protocol. The file never passes through PHP, so `upload_max_filesize`, `post_max_size` and request timeouts don't apply, and an interrupted upload resumes rather than restarting.
+
+This works by registering a custom uploader with Craft, via `Craft.registerUploaderClass()`. Craft dispatches uploaders by filesystem class, so BunnyMate registers for every filesystem used by a mapped volume. Volumes that share that filesystem but aren't mapped to a library are unaffected, and non-video files are always handled by Craft's own uploader.
+
+The same uploader is available as a standalone **Bunny Video Upload** utility, which is useful for bulk uploads or when you'd rather not navigate the asset index.
 
 Craft handles two small requests per file: one to create the video and its asset and hand back a signed upload credential, and one to refresh metadata when the upload finishes. The library's API key never reaches the browser. The signature is `SHA256(libraryId + apiKey + expires + videoGuid)`, scoped to a single video and expiring on its own.
 
@@ -186,4 +190,4 @@ Because these assets have no file on the filesystem, running **Update Asset Inde
 
 An asset that is moved to the trash and later purged by garbage collection leaves its Bunny video behind, since Craft's GC deletes elements with raw SQL and fires no element events. Deleting an asset outright removes the Bunny video correctly.
 
-The **Bunny Video Upload** utility is the only path that avoids PHP's upload limits. A video dropped onto the regular asset index still reaches Bunny via the fetch fallback above, but it has to get into Craft first, so `upload_max_filesize` and `post_max_size` apply to it.
+If the uploader can't confirm in time that a folder is set up for Bunny Stream, it lets Craft handle the upload normally. The video still reaches Bunny via the fetch fallback, just without bypassing PHP's upload limits.

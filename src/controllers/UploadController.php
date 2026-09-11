@@ -116,6 +116,42 @@ class UploadController extends Controller
     }
 
     /**
+     * Reports whether a folder's volume is set up for Bunny Stream.
+     *
+     * The uploader asks this when the selected source changes, so that by the time a file is
+     * dropped it already knows whether to intercept it.
+     *
+     * @return Response
+     * @throws BadRequestHttpException
+     */
+    public function actionFolderInfo(): Response
+    {
+        $this->requireCpRequest();
+        $this->requireAcceptsJson();
+
+        $folderId = (int)Craft::$app->getRequest()->getRequiredParam('folderId');
+        $folder = Craft::$app->getAssets()->getFolderById($folderId);
+
+        if (!$folder || !$folder->volumeId) {
+            return $this->asJson(['stream' => false]);
+        }
+
+        $volume = $folder->getVolume();
+
+        try {
+            $library = BunnyMate::getInstance()->getStream()->getLibraryForVolume($volume->handle);
+        } catch (\Throwable $e) {
+            Craft::error($e->getMessage(), __METHOD__);
+            return $this->asJson(['stream' => false]);
+        }
+
+        return $this->asJson([
+            'stream' => $library !== null && Craft::$app->getUser()->checkPermission("saveAssets:$volume->uid"),
+            'extensions' => $this->_allowedExtensions(),
+        ]);
+    }
+
+    /**
      * Refreshes an asset's video metadata once the browser reports the upload finished.
      *
      * Bunny's webhook is the source of truth for encoding status; this just pulls the video
