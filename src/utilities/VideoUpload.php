@@ -4,7 +4,8 @@ namespace vaersaagod\bunnymate\utilities;
 
 use Craft;
 use craft\base\Utility;
-use craft\helpers\Cp;
+use craft\helpers\Json;
+use craft\web\View;
 
 use vaersaagod\bunnymate\BunnyMate;
 use vaersaagod\bunnymate\web\assets\upload\UploadAsset;
@@ -77,6 +78,7 @@ class VideoUpload extends Utility
 
         $view = Craft::$app->getView();
         $view->registerAssetBundle(UploadAsset::class);
+        $view->registerJs(sprintf('Craft.BunnyMate.tusUrl = %s;', Json::encode(UploadAsset::tusUrl())), View::POS_END);
 
         return $view->renderTemplate('_bunnymate/_utilities/video-upload', [
             'volumeOptions' => $volumeOptions,

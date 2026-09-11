@@ -17,6 +17,7 @@
 - Added the Bunny Video Upload utility, which does the same thing as a standalone screen.
 - Videos that reach a mapped volume any other way (a normal upload, an import, a programmatic save) are now sent to Bunny Stream too, via Bunny's URL fetch. Added the `autoUploadVideos` setting to control this.
 - Replacing a video asset's file now replaces its Bunny Stream video.
+- Added a Bunny Stream panel to asset edit screens, showing encoding status and metadata, with a button to refresh it from Bunny when the webhook hasn't landed.
 
 ### Fixed
 - Fixed an error in the Bunny Video Upload utility, caused by calling `getFileKinds()` on the assets service rather than the assets helper.

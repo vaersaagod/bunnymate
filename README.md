@@ -174,6 +174,16 @@ Replacing a video's file deletes the old Bunny video and sends the new file up i
 
 Set `autoUploadVideos` to `false` to turn this off and rely on the uploader alone.
 
+### The Bunny Stream panel
+
+Video assets backed by Bunny Stream get a **Bunny Stream** panel in their edit screen sidebar, showing encoding status, available resolutions, dimensions, duration and the video's GUID.
+
+It also carries a **Refresh from Bunny** button, which pulls the video's current state down from Bunny on demand. The webhook normally keeps this in step, so the button is for when it doesn't: no webhook URL configured, an environment Bunny can't reach, or a delivery that was missed.
+
+### Non-video files
+
+Only video files are sent to Bunny Stream. An image, PDF or anything else uploaded to a mapped volume is stored in that volume exactly as it would be otherwise, with transforms and asset URLs untouched. On a volume using the Bunny Storage filesystem, that means it's served over the pull zone like any other file.
+
 ### Access control
 
 New Bunny video libraries ship with **Block direct URL file access** enabled, which rejects any request that arrives without a `Referer` header.

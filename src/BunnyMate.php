@@ -3,15 +3,18 @@
 namespace vaersaagod\bunnymate;
 
 use Craft;
+use craft\base\Element;
 use craft\base\Model;
 use craft\base\Plugin;
 use craft\elements\Asset;
 use craft\events\DefineAssetUrlEvent;
 use craft\events\DefineBehaviorsEvent;
+use craft\events\DefineHtmlEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\ReplaceAssetEvent;
 use craft\helpers\ElementHelper;
+use craft\helpers\Html;
 use craft\helpers\Json;
 use craft\helpers\Queue;
 use craft\services\Assets;
@@ -29,6 +32,7 @@ use vaersaagod\bunnymate\services\Stream;
 use vaersaagod\bunnymate\services\Videos;
 use vaersaagod\bunnymate\utilities\VideoUpload;
 use vaersaagod\bunnymate\web\assets\upload\UploadAsset;
+use vaersaagod\bunnymate\web\assets\videopanel\VideoPanelAsset;
 use vaersaagod\bunnymate\web\twig\BunnyMateExtension;
 
 use yii\base\Event;
@@ -95,6 +99,7 @@ class BunnyMate extends Plugin
         $this->_registerUtilities();
         $this->_registerVideoAutoUpload();
         $this->_registerStreamUploader();
+        $this->_registerVideoPanel();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -391,7 +396,11 @@ class BunnyMate extends Plugin
             $view = Craft::$app->getView();
             $view->registerAssetBundle(UploadAsset::class);
             $view->registerJs(
-                sprintf('Craft.BunnyMate.registerStreamUploader(%s);', Json::encode($fsTypes)),
+                sprintf(
+                    'Craft.BunnyMate.tusUrl = %s; Craft.BunnyMate.registerStreamUploader(%s);',
+                    Json::encode(UploadAsset::tusUrl()),
+                    Json::encode($fsTypes),
+                ),
                 View::POS_END,
             );
         });
@@ -421,6 +430,67 @@ class BunnyMate extends Plugin
             }
         }
         return array_values(array_unique($fsTypes));
+    }
+
+    /**
+     * Renders the Bunny Stream panel for an asset.
+     *
+     * @param Asset $asset
+     * @param bool $static Whether the panel should render without its refresh control
+     * @return string Empty if the asset has no Bunny Stream video
+     * @since 2.1.0
+     */
+    public function renderVideoPanel(Asset $asset, bool $static = false): string
+    {
+        $video = $this->getVideos()->getVideoForAsset($asset);
+        if (!$video) {
+            return '';
+        }
+        return Craft::$app->getView()->renderTemplate('_bunnymate/_components/video-panel', [
+            'asset' => $asset,
+            'video' => $video,
+            'static' => $static,
+        ], View::TEMPLATE_MODE_CP);
+    }
+
+    /**
+     * Adds a Bunny Stream panel to the sidebar of asset edit screens.
+     *
+     * The panel shows encoding status and offers a manual refresh, for when the webhook
+     * hasn't landed: no webhook URL configured, an environment Bunny can't reach, or a
+     * delivery that was missed.
+     *
+     * @return void
+     */
+    private function _registerVideoPanel(): void
+    {
+        Event::on(
+            Asset::class,
+            Element::EVENT_DEFINE_SIDEBAR_HTML,
+            function (DefineHtmlEvent $event) {
+                /** @var Asset $asset */
+                $asset = $event->sender;
+                if ($asset->kind !== Asset::KIND_VIDEO) {
+                    return;
+                }
+                $panel = $this->renderVideoPanel($asset, $event->static);
+                if ($panel === '') {
+                    return;
+                }
+                if (!$event->static) {
+                    $view = Craft::$app->getView();
+                    $view->registerAssetBundle(VideoPanelAsset::class);
+                    $view->registerJs('new Craft.BunnyMate.VideoPanel();', View::POS_READY);
+                }
+                // Craft only wraps the element's own metaFieldsHtml() in .meta, so anything
+                // appended here has to bring its own fieldset and wrapper
+                $event->html .= Html::tag(
+                    'fieldset',
+                    Html::tag('legend', Craft::t('_bunnymate', 'Bunny Stream'), ['class' => 'h6']) .
+                    Html::tag('div', $panel, ['class' => 'meta']),
+                );
+            }
+        );
     }
 
 }

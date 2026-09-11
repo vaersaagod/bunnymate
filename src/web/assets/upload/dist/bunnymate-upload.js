@@ -8,6 +8,34 @@
   }
 
   /**
+   * Loads the TUS client on demand, once.
+   *
+   * It's 86KB and most control panel screens never start an upload, so it isn't part of
+   * the asset bundle's own JS.
+   *
+   * @returns {Promise}
+   */
+  Craft.BunnyMate.loadTus = function () {
+    if (typeof tus !== 'undefined') {
+      return Promise.resolve();
+    }
+    if (Craft.BunnyMate._tusPromise) {
+      return Craft.BunnyMate._tusPromise;
+    }
+    Craft.BunnyMate._tusPromise = new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      script.src = Craft.BunnyMate.tusUrl;
+      script.onload = resolve;
+      script.onerror = function () {
+        Craft.BunnyMate._tusPromise = null;
+        reject(new Error('Couldn’t load the upload client.'));
+      };
+      document.head.appendChild(script);
+    });
+    return Craft.BunnyMate._tusPromise;
+  };
+
+  /**
    * Uploads video files straight to Bunny Stream over TUS.
    *
    * Craft only ever sees a request for upload credentials and a request to refresh
@@ -90,7 +118,9 @@
           },
         })
           .then(function (response) {
-            self.startTusUpload(file, response.data, row);
+            return Craft.BunnyMate.loadTus().then(function () {
+              self.startTusUpload(file, response.data, row);
+            });
           })
           .catch(function (error) {
             var message =

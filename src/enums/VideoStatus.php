@@ -80,6 +80,22 @@ enum VideoStatus: int
     }
 
     /**
+     * Returns the Craft status indicator class for this status.
+     *
+     * @return string
+     */
+    public function indicatorClass(): string
+    {
+        if ($this->isFailed()) {
+            return 'off';
+        }
+        if ($this->isPlayable()) {
+            return 'on';
+        }
+        return 'gray';
+    }
+
+    /**
      * Returns a human-readable label for this status.
      *
      * @return string

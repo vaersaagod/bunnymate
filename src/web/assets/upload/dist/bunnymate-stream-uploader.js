@@ -124,7 +124,9 @@
         },
       })
         .then(function (response) {
-          self.startTusUpload(file, response.data);
+          return Craft.BunnyMate.loadTus().then(function () {
+            self.startTusUpload(file, response.data);
+          });
         })
         .catch(function (error) {
           self.failUpload(
