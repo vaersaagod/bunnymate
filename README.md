@@ -84,3 +84,78 @@ Only the affected URLs are purged, via Bunny's [single URL purge endpoint](https
 Paths are collected over the course of a request and handed to a single queue job afterwards, so bulk operations such as renaming a folder don't fire one blocking HTTP request per file.
 
 `apiKey` is the **account** API key from the Bunny dashboard, not a storage zone password. Set `purgeEnabled` to `false` to leave the edge cache to expire on the pull zone's own TTL.
+
+## Bunny Stream
+
+BunnyMate can back Craft video assets with [Bunny Stream](https://bunny.net/stream/), so videos are transcoded and delivered by Bunny while remaining ordinary Craft assets.
+
+Unlike a custom field type, nothing is added to an asset field layout and no video metadata is stored in the content table. The mapping between assets and Bunny videos lives in the `bunnymate_videos` table, and is exposed through a behavior.
+
+### Configuration
+
+```php
+'videoLibraries' => [
+    'default' => [
+        'id' => '$BUNNY_STREAM_LIBRARY_ID',
+        'apiKey' => '$BUNNY_STREAM_API_KEY',
+        'readOnlyApiKey' => '$BUNNY_STREAM_READONLY_KEY',
+        'hostname' => 'vz-xxxxxxxx-xxx.b-cdn.net',
+        // Only if token authentication is enabled on the library's pull zone
+        'tokenAuthKey' => '$BUNNY_STREAM_TOKEN_KEY',
+    ],
+],
+'defaultVideoLibrary' => 'default',
+
+// Volumes not listed here are left alone
+'volumeVideoLibraries' => [
+    'videos' => 'default',
+],
+```
+
+The `apiKey` grants write access to the library, so it must never reach the browser. The `readOnlyApiKey` doubles as the webhook signing secret.
+
+### Webhook
+
+Add this URL under **Webhook URL** in the video library's settings in the Bunny dashboard:
+
+`https://your-site.com/bunnymate/webhook`
+
+Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on the library's read-only API key, so an unsigned or incorrectly signed request is rejected with a 403. Local environments need a publicly reachable URL, via `ddev share`, ngrok or similar.
+
+### Twig
+
+```twig
+{% set video = asset.bunnyVideo %}
+
+{% if video and video.isReady %}
+    <video poster="{{ video.thumbnailUrl }}" controls>
+        <source src="{{ video.hlsUrl }}" type="application/x-mpegURL">
+        <source src="{{ video.mp4Url('720p') }}" type="video/mp4">
+    </video>
+{% elseif video and video.isFailed %}
+    <p>{{ "This video could not be processed."|t }}</p>
+{% elseif video %}
+    <p>{{ "Processing: {progress}%"|t({ progress: video.encodeProgress }) }}</p>
+{% endif %}
+```
+
+| Property | Notes |
+| --- | --- |
+| `isReady` / `isFailed` | Whether the video is playable, or failed to encode |
+| `status` | A `VideoStatus` enum case; `status.label()` for a readable name |
+| `hlsUrl` | HLS playlist. Null until playable. |
+| `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given. |
+| `thumbnailUrl` | Poster frame. Available before encoding finishes. |
+| `previewUrl` | Animated WebP preview |
+| `embedUrl(params)` | Bunny's iframe player URL |
+| `width`, `height`, `length`, `encodeProgress`, `availableResolutions` | Metadata from Bunny |
+
+### Asset URLs
+
+Assets backed by Bunny Stream hold no file of their own, so `asset.url` would otherwise resolve to a path that 404s. BunnyMate overrides it via `Asset::EVENT_BEFORE_DEFINE_URL`: a video asset returns its HLS URL, and a transform request returns the poster frame instead. Set `overrideAssetUrls` to `false` to opt out.
+
+### Known limitations
+
+Because these assets have no file on the filesystem, running **Update Asset Indexes** on a Bunny Stream volume reports them as missing.
+
+An asset that is moved to the trash and later purged by garbage collection leaves its Bunny video behind, since Craft's GC deletes elements with raw SQL and fires no element events. Deleting an asset outright removes the Bunny video correctly.

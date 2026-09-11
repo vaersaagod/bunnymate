@@ -36,6 +36,43 @@ class Settings extends Model
     public ?string $apiKey = null;
 
     /**
+     * @var array[] Bunny Stream video library configs, indexed by handle.
+     *
+     * Each config takes `id`, `apiKey`, `readOnlyApiKey` and `hostname`, plus an optional
+     * `tokenAuthKey` when the library's pull zone has token authentication enabled. Every
+     * value can be set to an environment variable.
+     *
+     * @since 2.1.0
+     */
+    public array $videoLibraries = [];
+
+    /**
+     * @var string|null The handle of the video library to use by default
+     * @since 2.1.0
+     */
+    public ?string $defaultVideoLibrary = null;
+
+    /**
+     * @var array<string, string> Maps volume handles to video library handles.
+     *
+     * Videos uploaded to a volume listed here are sent to the mapped library. Volumes that
+     * aren't listed are left alone.
+     *
+     * @since 2.1.0
+     */
+    public array $volumeVideoLibraries = [];
+
+    /**
+     * @var bool Whether `asset.url` should return the Bunny playback URL for videos.
+     *
+     * Assets backed by Bunny Stream have no file of their own, so without this their URL
+     * resolves to a path that 404s.
+     *
+     * @since 2.1.0
+     */
+    public bool $overrideAssetUrls = true;
+
+    /**
      * @var bool Whether changed files should be purged from the CDN cache when assets are
      * added, replaced, moved or deleted via a Bunny Storage filesystem.
      *

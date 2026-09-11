@@ -8,6 +8,12 @@
 - Added the `purgeEnabled` setting.
 - Changed files are now purged from the CDN cache when assets on a Bunny Storage filesystem are added, replaced, copied, moved or deleted.
 
+- Added Bunny Stream support: video libraries can be mapped to volumes, and video assets are backed by Bunny Stream videos.
+- Added the `bunnymate/webhook` endpoint, which keeps video status in sync with Bunny. Payloads are verified with HMAC-SHA256.
+- Added `asset.bunnyVideo`, exposing playback, thumbnail and embed URLs, encoding status and video metadata.
+- Added the `videoLibraries`, `defaultVideoLibrary`, `volumeVideoLibraries` and `overrideAssetUrls` settings.
+- `asset.url` now returns the Bunny playback URL for video assets backed by Bunny Stream.
+
 ### Changed
 - BunnyMate now requires PHP 8.3 or later.
 

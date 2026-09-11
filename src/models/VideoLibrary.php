@@ -1,0 +1,186 @@
+<?php
+
+namespace vaersaagod\bunnymate\models;
+
+use craft\base\Model;
+use craft\helpers\App;
+use craft\helpers\UrlHelper;
+
+/**
+ * A Bunny Stream video library, as configured in `config/_bunnymate.php`.
+ *
+ * @author Værsågod
+ * @since 2.1.0
+ */
+class VideoLibrary extends Model
+{
+
+    // Public Properties
+    // =========================================================================
+
+    /** @var string The library's handle, as keyed in the `videoLibraries` config array */
+    public string $handle = '';
+
+    /** @var string|int The Bunny video library ID */
+    public string|int $id = '';
+
+    /** @var string The library's API key. Grants write access, so keep it server-side. */
+    public string $apiKey = '';
+
+    /**
+     * @var string The library's read-only API key.
+     *
+     * Bunny signs webhook payloads with this, so it doubles as the webhook signing secret.
+     */
+    public string $readOnlyApiKey = '';
+
+    /** @var string The library's playback hostname, e.g. `vz-xxxxxxxx-xxx.b-cdn.net` */
+    public string $hostname = '';
+
+    /**
+     * @var string|null The pull zone's token authentication key.
+     *
+     * Only needed when token authentication is enabled on the library's pull zone, in which
+     * case every playback URL must be signed. See [[signUrl()]].
+     */
+    public ?string $tokenAuthKey = null;
+
+    /** @var int How long signed URLs should remain valid, in seconds */
+    public int $signedUrlDuration = 3600;
+
+    /** @var string|null An optional collection to create videos in */
+    public ?string $collectionId = null;
+
+    // Public Methods
+    // =========================================================================
+
+    /**
+     * @inheritdoc
+     */
+    public function init(): void
+    {
+        parent::init();
+        // Every credential can be set to an environment variable
+        $this->id = (string)App::parseEnv((string)$this->id);
+        $this->apiKey = (string)App::parseEnv($this->apiKey);
+        $this->readOnlyApiKey = (string)App::parseEnv($this->readOnlyApiKey);
+        $this->hostname = (string)App::parseEnv($this->hostname);
+        if ($this->tokenAuthKey !== null) {
+            $this->tokenAuthKey = (string)App::parseEnv($this->tokenAuthKey) ?: null;
+        }
+        // Normalize the hostname to a bare host, so URLs can be built predictably
+        $this->hostname = rtrim(preg_replace('/^https?:\/\//', '', $this->hostname), '/');
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function defineRules(): array
+    {
+        return array_merge(parent::defineRules(), [
+            [['id', 'apiKey', 'readOnlyApiKey', 'hostname'], 'required'],
+            [['signedUrlDuration'], 'integer', 'min' => 60],
+        ]);
+    }
+
+    /**
+     * Returns whether playback URLs from this library need signing.
+     *
+     * @return bool
+     */
+    public function getIsTokenAuthEnabled(): bool
+    {
+        return !empty($this->tokenAuthKey);
+    }
+
+    /**
+     * Returns a playback URL for a file belonging to the given video.
+     *
+     * @param string $videoGuid
+     * @param string $file e.g. `playlist.m3u8`, `thumbnail.jpg`, `play_720p.mp4`
+     * @return string
+     */
+    public function getVideoUrl(string $videoGuid, string $file): string
+    {
+        $url = "https://$this->hostname/$videoGuid/" . ltrim($file, '/');
+        return $this->signUrl($url, $videoGuid);
+    }
+
+    /**
+     * Returns the iframe embed URL for a video.
+     *
+     * @param string $videoGuid
+     * @param array $params Additional player params, e.g. `['autoplay' => 'true']`
+     * @return string
+     */
+    public function getEmbedUrl(string $videoGuid, array $params = []): string
+    {
+        $url = "https://iframe.mediadelivery.net/embed/$this->id/$videoGuid";
+        if (!empty($params)) {
+            $url = UrlHelper::urlWithParams($url, $params);
+        }
+        return $this->signUrl($url, $videoGuid);
+    }
+
+    /**
+     * Signs a URL for a token-authenticated library, or returns it untouched if token
+     * authentication isn't enabled.
+     *
+     * Bunny expects `SHA256_HEX(tokenAuthKey + videoGuid + expires)`, with the hash and the
+     * expiry appended as `token` and `expires` query params.
+     *
+     * @see https://bunny.net/docs/stream/token-authentication/
+     *
+     * @param string $url
+     * @param string $videoGuid
+     * @param int|null $expires UNIX timestamp; defaults to now plus [[signedUrlDuration]]
+     * @return string
+     */
+    public function signUrl(string $url, string $videoGuid, ?int $expires = null): string
+    {
+        if (!$this->getIsTokenAuthEnabled()) {
+            return $url;
+        }
+        $expires ??= time() + $this->signedUrlDuration;
+        $token = hash('sha256', $this->tokenAuthKey . $videoGuid . $expires);
+        return UrlHelper::urlWithParams($url, [
+            'token' => $token,
+            'expires' => $expires,
+        ]);
+    }
+
+    /**
+     * Returns the signature a TUS upload needs, along with its expiry.
+     *
+     * Bunny expects `SHA256_HEX(libraryId + apiKey + expires + videoGuid)`. The API key is
+     * never sent to the browser; only the resulting signature is.
+     *
+     * @see https://bunny.net/docs/stream/tus-resumable-uploads/
+     *
+     * @param string $videoGuid
+     * @param int|null $expires UNIX timestamp; defaults to now plus one hour
+     * @return array{signature: string, expires: int, libraryId: string, videoId: string}
+     */
+    public function getUploadSignature(string $videoGuid, ?int $expires = null): array
+    {
+        $expires ??= time() + 3600;
+        return [
+            'signature' => hash('sha256', $this->id . $this->apiKey . $expires . $videoGuid),
+            'expires' => $expires,
+            'libraryId' => (string)$this->id,
+            'videoId' => $videoGuid,
+        ];
+    }
+
+    /**
+     * Returns whether a given string matches this library's ID.
+     *
+     * @param string|int $libraryId
+     * @return bool
+     */
+    public function matchesId(string|int $libraryId): bool
+    {
+        return (string)$libraryId === (string)$this->id;
+    }
+
+}
