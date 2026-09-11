@@ -32,6 +32,11 @@ return [
         //'videos' => 'default',
     ],
 
+    // Whether videos uploaded to a mapped volume any way other than the Bunny Video Upload
+    // utility should be sent to Bunny Stream automatically. Bunny pulls the file from the
+    // asset's URL, so the volume must be reachable from the public internet.
+    'autoUploadVideos' => true,
+
     // Whether asset.url should return the Bunny playback URL for Bunny Stream videos
     'overrideAssetUrls' => true,
 

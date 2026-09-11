@@ -63,6 +63,18 @@ class Settings extends Model
     public array $volumeVideoLibraries = [];
 
     /**
+     * @var bool Whether video assets in mapped volumes should be sent to Bunny Stream
+     * automatically when they're created.
+     *
+     * This covers videos that arrive any way other than the TUS uploader: a normal CP upload,
+     * a feed import, or a programmatic save. Bunny pulls the file from the asset's URL, so the
+     * volume has to be reachable from the public internet.
+     *
+     * @since 2.1.0
+     */
+    public bool $autoUploadVideos = true;
+
+    /**
      * @var bool Whether `asset.url` should return the Bunny playback URL for videos.
      *
      * Assets backed by Bunny Stream have no file of their own, so without this their URL

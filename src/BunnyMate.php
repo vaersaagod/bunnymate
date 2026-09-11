@@ -10,6 +10,10 @@ use craft\events\DefineAssetUrlEvent;
 use craft\events\DefineBehaviorsEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
+use craft\events\ReplaceAssetEvent;
+use craft\helpers\ElementHelper;
+use craft\helpers\Queue;
+use craft\services\Assets;
 use craft\services\Fs;
 use craft\services\Utilities;
 use craft\web\UrlManager;
@@ -17,6 +21,7 @@ use craft\web\UrlManager;
 use vaersaagod\bunnymate\behaviors\VideoAssetBehavior;
 use vaersaagod\bunnymate\fs\BunnyStorageFs;
 use vaersaagod\bunnymate\models\Settings;
+use vaersaagod\bunnymate\queue\jobs\UploadVideo;
 use vaersaagod\bunnymate\services\Purge;
 use vaersaagod\bunnymate\services\Stream;
 use vaersaagod\bunnymate\services\Videos;
@@ -25,6 +30,7 @@ use vaersaagod\bunnymate\web\twig\BunnyMateExtension;
 
 use yii\base\Event;
 use yii\base\InvalidConfigException;
+use yii\base\ModelEvent;
 
 /**
  * BunnyMate plugin
@@ -84,6 +90,7 @@ class BunnyMate extends Plugin
         $this->_registerAssetUrlOverride();
         $this->_registerAssetCleanup();
         $this->_registerUtilities();
+        $this->_registerVideoAutoUpload();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -290,6 +297,67 @@ class BunnyMate extends Plugin
             Utilities::EVENT_REGISTER_UTILITIES,
             static function (RegisterComponentTypesEvent $event) {
                 $event->types[] = VideoUpload::class;
+            }
+        );
+    }
+
+    /**
+     * Sends video assets to Bunny Stream when they arrive any way other than the TUS uploader.
+     *
+     * Bunny pulls the file from the asset's URL, so this only works for volumes that are
+     * reachable from the public internet. Videos uploaded over TUS already have their bytes on
+     * Bunny, and are skipped via the videos service's suspend flag.
+     *
+     * @return void
+     */
+    private function _registerVideoAutoUpload(): void
+    {
+        Event::on(
+            Asset::class,
+            Asset::EVENT_AFTER_PROPAGATE,
+            function (ModelEvent $event) {
+                if (!$this->getSettings()->autoUploadVideos) {
+                    return;
+                }
+                /** @var Asset $asset */
+                $asset = $event->sender;
+                if (
+                    $asset->kind !== Asset::KIND_VIDEO
+                    || $asset->resaving
+                    || $asset->propagating
+                    || ElementHelper::isDraftOrRevision($asset)
+                ) {
+                    return;
+                }
+                $videos = $this->getVideos();
+                if ($videos->suspendAutoUpload || $videos->getVideoForAsset($asset)) {
+                    return;
+                }
+                try {
+                    if (!$this->getStream()->getLibraryForVolume($asset->getVolume()->handle)) {
+                        return;
+                    }
+                } catch (\Throwable $e) {
+                    Craft::error($e->getMessage(), __METHOD__);
+                    return;
+                }
+                Queue::push(new UploadVideo([
+                    'assetId' => $asset->id,
+                ]));
+            }
+        );
+
+        // When a video's file is replaced, drop the old Bunny video so the save that follows
+        // sends the new file up in its place
+        Event::on(
+            Assets::class,
+            Assets::EVENT_BEFORE_REPLACE_ASSET,
+            function (ReplaceAssetEvent $event) {
+                $asset = $event->asset;
+                if ($asset->kind !== Asset::KIND_VIDEO) {
+                    return;
+                }
+                $this->getVideos()->deleteVideoForAsset($asset);
             }
         );
     }

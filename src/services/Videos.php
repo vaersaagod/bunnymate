@@ -23,6 +23,18 @@ use yii\base\InvalidConfigException;
 class Videos extends Component
 {
 
+    // Public Properties
+    // =========================================================================
+
+    /**
+     * @var bool Whether the automatic upload of new video assets is currently suspended.
+     *
+     * The TUS uploader creates its asset *before* attaching the video to it, so without this
+     * the auto-upload handler would see a brand new video asset with no video and queue a
+     * redundant URL fetch against a file that doesn't exist yet.
+     */
+    public bool $suspendAutoUpload = false;
+
     // Private Properties
     // =========================================================================
 

@@ -14,6 +14,11 @@
 - Added the `videoLibraries`, `defaultVideoLibrary`, `volumeVideoLibraries` and `overrideAssetUrls` settings.
 - `asset.url` now returns the Bunny playback URL for video assets backed by Bunny Stream.
 - Added the Bunny Video Upload utility, which uploads video files from the browser straight to Bunny Stream over TUS, bypassing PHP's upload limits.
+- Videos that reach a mapped volume any other way (a normal upload, an import, a programmatic save) are now sent to Bunny Stream too, via Bunny's URL fetch. Added the `autoUploadVideos` setting to control this.
+- Replacing a video asset's file now replaces its Bunny Stream video.
+
+### Fixed
+- Fixed an error in the Bunny Video Upload utility, caused by calling `getFileKinds()` on the assets service rather than the assets helper.
 
 ### Changed
 - BunnyMate now requires PHP 8.3 or later.

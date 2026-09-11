@@ -83,13 +83,22 @@ class UploadController extends Controller
         // temp file) doesn't apply
         $asset->setScenario(Asset::SCENARIO_INDEX);
 
-        if (!Craft::$app->getElements()->saveElement($asset)) {
+        // The video is attached below, so the auto-upload handler must not fire for this save
+        $videos = BunnyMate::getInstance()->getVideos();
+        $videos->suspendAutoUpload = true;
+        try {
+            $saved = Craft::$app->getElements()->saveElement($asset);
+        } finally {
+            $videos->suspendAutoUpload = false;
+        }
+
+        if (!$saved) {
             // Don't leave an orphaned video behind in Bunny
             $stream->deleteVideo($library, $videoGuid);
             return $this->asModelFailure($asset, Craft::t('_bunnymate', 'Couldn’t create the asset.'), 'asset');
         }
 
-        BunnyMate::getInstance()->getVideos()->saveVideo(
+        $videos->saveVideo(
             $asset->id,
             $library->handle,
             $videoGuid,
@@ -195,7 +204,7 @@ class UploadController extends Controller
     private function _allowedExtensions(): array
     {
         $allowed = array_map('strtolower', Craft::$app->getConfig()->getGeneral()->allowedFileExtensions);
-        $videoExtensions = array_map('strtolower', Craft::$app->getAssets()->getFileKinds()[Asset::KIND_VIDEO]['extensions'] ?? []);
+        $videoExtensions = array_map('strtolower', AssetsHelper::getFileKinds()[Asset::KIND_VIDEO]['extensions'] ?? []);
         return array_values(array_intersect($allowed, $videoExtensions));
     }
 

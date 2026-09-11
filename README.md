@@ -162,6 +162,14 @@ Craft handles two small requests per file: one to create the video and its asset
 
 Only volumes listed in `volumeVideoLibraries` appear in the utility, and only to users with `saveAssets` permission on them.
 
+#### Videos that arrive some other way
+
+A video that reaches a mapped volume by any other route, a normal CP upload, a feed import, or a programmatic save, is also sent to Bunny, by asking Bunny to fetch it from the asset's URL. That means the volume has to be reachable from the public internet: a local filesystem on a dev machine can't be pulled from, and the job will log an error. A volume on the Bunny Storage filesystem works well here, since the file is already on Bunny's network.
+
+Replacing a video's file deletes the old Bunny video and sends the new file up in its place.
+
+Set `autoUploadVideos` to `false` to turn this off and rely on the uploader alone.
+
 ### Access control
 
 New Bunny video libraries ship with **Block direct URL file access** enabled, which rejects any request that arrives without a `Referer` header.
@@ -178,4 +186,4 @@ Because these assets have no file on the filesystem, running **Update Asset Inde
 
 An asset that is moved to the trash and later purged by garbage collection leaves its Bunny video behind, since Craft's GC deletes elements with raw SQL and fires no element events. Deleting an asset outright removes the Bunny video correctly.
 
-Videos are uploaded through the **Bunny Video Upload** utility rather than the regular asset index upload button. Dropping a video onto a volume the normal way stores the file in that volume without sending it to Bunny.
+The **Bunny Video Upload** utility is the only path that avoids PHP's upload limits. A video dropped onto the regular asset index still reaches Bunny via the fetch fallback above, but it has to get into Craft first, so `upload_max_filesize` and `post_max_size` apply to it.
