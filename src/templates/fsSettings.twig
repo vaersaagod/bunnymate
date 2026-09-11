@@ -1,0 +1,64 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.autosuggestField({
+    label: "Storage Zone"|t('_bunnymate'),
+    instructions: "The name of the Bunny Edge Storage zone."|t('_bunnymate'),
+    id: 'storageZone',
+    name: 'storageZone',
+    value: fs.storageZone,
+    required: true,
+    suggestEnvVars: true,
+    errors: fs.getErrors('storageZone'),
+}) }}
+
+{{ forms.autosuggestField({
+    label: "Access Key"|t('_bunnymate'),
+    instructions: "The storage zone's password, found under FTP & API Access in the Bunny dashboard."|t('_bunnymate'),
+    id: 'accessKey',
+    name: 'accessKey',
+    value: fs.accessKey,
+    required: true,
+    suggestEnvVars: true,
+    errors: fs.getErrors('accessKey'),
+}) }}
+
+{{ forms.selectField({
+    label: "Region"|t('_bunnymate'),
+    instructions: "The region the storage zone was created in. Getting this wrong will cause every request to fail."|t('_bunnymate'),
+    id: 'region',
+    name: 'region',
+    options: regionOptions,
+    value: fs.region,
+    required: true,
+    errors: fs.getErrors('region'),
+}) }}
+
+{{ forms.autosuggestField({
+    label: "Subfolder"|t('_bunnymate'),
+    instructions: "An optional path within the storage zone to use as this filesystem's root."|t('_bunnymate'),
+    id: 'subfolder',
+    name: 'subfolder',
+    value: fs.subfolder,
+    suggestEnvVars: true,
+    errors: fs.getErrors('subfolder'),
+}) }}
+
+{% if pullZoneOptions|length %}
+    {{ forms.selectField({
+        label: "Pull Zone"|t('_bunnymate'),
+        instructions: "The pull zone that serves this storage zone. Pull zones are configured in config/_bunnymate.php."|t('_bunnymate'),
+        id: 'pullZone',
+        name: 'pullZone',
+        options: pullZoneOptions,
+        value: fs.pullZone,
+        errors: fs.getErrors('pullZone'),
+    }) }}
+{% else %}
+    {{ forms.field({
+        label: "Pull Zone"|t('_bunnymate'),
+        errors: fs.getErrors('pullZone'),
+    }, tag('div', {
+        class: 'warning with-icon',
+        text: "No pull zones are configured. Add one to the pullZones array in config/_bunnymate.php before enabling public URLs."|t('_bunnymate'),
+    })) }}
+{% endif %}
