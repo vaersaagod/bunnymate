@@ -41,21 +41,16 @@ class Stream extends Component
     /**
      * Returns a configured video library.
      *
-     * @param string|null $handle Defaults to the `defaultVideoLibrary` setting
+     * @param string $handle The library's key in the `videoLibraries` setting
      * @return VideoLibrary
      * @throws InvalidConfigException if the library isn't configured, or is misconfigured
      */
-    public function getLibrary(?string $handle = null): VideoLibrary
+    public function getLibrary(string $handle): VideoLibrary
     {
-        $settings = BunnyMate::getInstance()->getSettings();
-        $handle = $handle ?: $settings->defaultVideoLibrary;
-        if (empty($handle)) {
-            throw new InvalidConfigException('No default video library is configured');
-        }
         if (isset($this->_libraries[$handle])) {
             return $this->_libraries[$handle];
         }
-        $config = $settings->videoLibraries[$handle] ?? null;
+        $config = BunnyMate::getInstance()->getSettings()->videoLibraries[$handle] ?? null;
         if (!is_array($config)) {
             throw new InvalidConfigException("Invalid video library \"$handle\"");
         }

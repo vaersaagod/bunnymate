@@ -47,12 +47,6 @@ class Settings extends Model
     public array $videoLibraries = [];
 
     /**
-     * @var string|null The handle of the video library to use by default
-     * @since 2.1.0
-     */
-    public ?string $defaultVideoLibrary = null;
-
-    /**
      * @var array<string, string> Maps volume handles to video library handles.
      *
      * Videos uploaded to a volume listed here are sent to the mapped library. Volumes that

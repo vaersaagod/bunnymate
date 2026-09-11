@@ -11,7 +11,7 @@
 - Added Bunny Stream support: video libraries can be mapped to volumes, and video assets are backed by Bunny Stream videos.
 - Added the `bunnymate/webhook` endpoint, which keeps video status in sync with Bunny. Payloads are verified with HMAC-SHA256.
 - Added `asset.bunnyVideo`, exposing playback, thumbnail and embed URLs, encoding status and video metadata.
-- Added the `videoLibraries`, `defaultVideoLibrary`, `volumeVideoLibraries` and `overrideAssetUrls` settings.
+- Added the `videoLibraries`, `volumeVideoLibraries` and `overrideAssetUrls` settings.
 - `asset.url` now returns the Bunny playback URL for video assets backed by Bunny Stream.
 - Videos uploaded to a mapped volume through the regular Assets screen now go straight from the browser to Bunny Stream over TUS, bypassing PHP's upload limits entirely.
 - Added the Bunny Video Upload utility, which does the same thing as a standalone screen.

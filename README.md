@@ -104,13 +104,16 @@ Unlike a custom field type, nothing is added to an asset field layout and no vid
         'tokenAuthKey' => '$BUNNY_STREAM_TOKEN_KEY',
     ],
 ],
-'defaultVideoLibrary' => 'default',
 
 // Volumes not listed here are left alone
 'volumeVideoLibraries' => [
     'videos' => 'default',
 ],
 ```
+
+The key each library is listed under (`default` above) is a local name, referred to by `volumeVideoLibraries`. The library itself is identified by its `id`.
+
+`volumeVideoLibraries` maps Craft volume handles to those names, and is what turns Bunny Stream on: a volume that isn't listed is left alone entirely.
 
 The `apiKey` grants write access to the library, so it must never reach the browser. The `readOnlyApiKey` doubles as the webhook signing secret.
 

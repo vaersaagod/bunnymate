@@ -25,8 +25,6 @@ return [
         //    'tokenAuthKey' => '$BUNNY_STREAM_TOKEN_KEY',
         //],
     ],
-    'defaultVideoLibrary' => null,
-
     // Maps volume handles to video library handles. Volumes that aren't listed are left alone.
     'volumeVideoLibraries' => [
         //'videos' => 'default',
