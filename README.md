@@ -154,8 +154,28 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 
 Assets backed by Bunny Stream hold no file of their own, so `asset.url` would otherwise resolve to a path that 404s. BunnyMate overrides it via `Asset::EVENT_BEFORE_DEFINE_URL`: a video asset returns its HLS URL, and a transform request returns the poster frame instead. Set `overrideAssetUrls` to `false` to opt out.
 
+### Uploading
+
+BunnyMate adds a **Bunny Video Upload** utility, which uploads video files straight from the browser to Bunny over the [TUS](https://tus.io) resumable protocol. The file never passes through PHP, so `upload_max_filesize`, `post_max_size` and request timeouts don't apply, and an interrupted upload resumes rather than restarting.
+
+Craft handles two small requests per file: one to create the video and its asset and hand back a signed upload credential, and one to refresh metadata when the upload finishes. The library's API key never reaches the browser. The signature is `SHA256(libraryId + apiKey + expires + videoGuid)`, scoped to a single video and expiring on its own.
+
+Only volumes listed in `volumeVideoLibraries` appear in the utility, and only to users with `saveAssets` permission on them.
+
+### Access control
+
+New Bunny video libraries ship with **Block direct URL file access** enabled, which rejects any request that arrives without a `Referer` header.
+
+This is hotlink protection, not access control. A `Referer` header is set by whoever makes the request, so anyone who wants the file can send one and get it. What the setting reliably does is break legitimate consumers that don't send a referrer: sites using `Referrer-Policy: no-referrer`, native apps, and any server-side fetch.
+
+If videos need to be genuinely protected, enable **token authentication** on the library's pull zone and set `tokenAuthKey` in the library's config. BunnyMate then signs every playback and embed URL with an expiring token, and `signedUrlDuration` controls how long each one is valid. That is a real access control; the referrer check is not.
+
+With both off, playback URLs are public to anyone holding them. Video GUIDs are random UUIDs, so they aren't guessable, which is usually fine for non-sensitive content.
+
 ### Known limitations
 
 Because these assets have no file on the filesystem, running **Update Asset Indexes** on a Bunny Stream volume reports them as missing.
 
 An asset that is moved to the trash and later purged by garbage collection leaves its Bunny video behind, since Craft's GC deletes elements with raw SQL and fires no element events. Deleting an asset outright removes the Bunny video correctly.
+
+Videos are uploaded through the **Bunny Video Upload** utility rather than the regular asset index upload button. Dropping a video onto a volume the normal way stores the file in that volume without sending it to Bunny.

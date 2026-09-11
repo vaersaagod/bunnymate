@@ -13,6 +13,7 @@
 - Added `asset.bunnyVideo`, exposing playback, thumbnail and embed URLs, encoding status and video metadata.
 - Added the `videoLibraries`, `defaultVideoLibrary`, `volumeVideoLibraries` and `overrideAssetUrls` settings.
 - `asset.url` now returns the Bunny playback URL for video assets backed by Bunny Stream.
+- Added the Bunny Video Upload utility, which uploads video files from the browser straight to Bunny Stream over TUS, bypassing PHP's upload limits.
 
 ### Changed
 - BunnyMate now requires PHP 8.3 or later.
