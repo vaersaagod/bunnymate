@@ -12,7 +12,7 @@ BunnyMate integrates [Bunny](https://bunny.net) with Craft CMS. It does four thi
 
 **A Bunny Storage filesystem.** Assets stored in a [Bunny Edge Storage](https://bunny.net/storage/) zone and served over the pull zone that fronts it. Asset URLs come from the pull zone config rather than a per-filesystem base URL, and changed files are purged from the CDN automatically. → [Bunny Storage filesystem](#bunny-storage-filesystem)
 
-**Video streaming.** Video assets backed by [Bunny Stream](https://bunny.net/stream/), transcoded and delivered by Bunny while staying ordinary Craft assets. Uploads go straight from the browser to Bunny over a resumable protocol, so PHP's upload limits don't apply, and a signed webhook keeps encoding status in sync. No custom field type: playback URLs, poster frames and metadata hang off `asset.bunnyVideo`. → [Bunny Stream](#bunny-stream)
+**Video streaming.** Video assets backed by [Bunny Stream](https://bunny.net/stream/), transcoded and delivered by Bunny while staying ordinary Craft assets. Uploads go straight from the browser to Bunny over a resumable protocol, so PHP's upload limits don't apply, and a signed webhook keeps encoding status in sync. No custom field type: playback URLs, poster frames and metadata hang off `asset.bunnyVideo`, asset queries take a `bunnyVideo()` parameter, and `asset.getBunnyVideoTag()` renders a player. → [Bunny Stream](#bunny-stream)
 
 **CDN cache purging.** Changed files are purged from the edge when assets are added, replaced, moved or deleted, so a replaced file doesn't keep serving its old copy until the TTL expires. → [Cache purging](#cache-purging)
 
@@ -169,6 +169,72 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
 | `availableResolutions` | Every rendition Bunny encoded for HLS, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
 | `availableMp4Resolutions` | Those an MP4 actually exists for, measured rather than assumed. See [Renditions](#renditions). |
+
+### The player
+
+`asset.getBunnyVideoTag()` renders a `<video>` element for a ready video, and returns null for anything else, so it doubles as the "is this playable" check:
+
+```twig
+{{ asset.getBunnyVideoTag() }}
+```
+
+What comes out is a plain `<video>` with two sources — the HLS playlist and an MP4 rendition — a poster frame, and an `aspect-ratio` style so the page doesn't jump once metadata arrives. Safari plays the HLS natively and everything else falls back to the MP4, with no JavaScript involved at all. Where `hlsJsUrl` is set, a small script upgrades the rest to adaptive playback; it's only registered when the tag actually needs it.
+
+```twig
+{# A muted background loop: MP4 only, because for a silent loop a fixed rendition
+   starts sooner and needs no player code #}
+{{ asset.getBunnyVideoTag({ inline: true, hls: false, resolution: '360p' }) }}
+```
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `inline` | `false` | Sets `autoplay`, `muted`, `loop` and drops `controls`, for a background loop |
+| `hls` | `true` | Set to false to emit only the MP4 source, and skip the player script |
+| `lazyload` | `lazyloadBunnyVideo` | Holds the sources in `data-src` until the element scrolls into view |
+| `resolution` | `videoUrlRendition` | Which MP4 rendition to use as the fallback source |
+| `minResolution` / `maxResolution` | `defaultMinResolution` / `defaultMaxResolution` | Bounds on the levels hls.js may pick. Adaptive playback only, so they do nothing when `hls` is false. |
+| `poster` | The video's thumbnail | A URL, or false for none |
+| `controls`, `playsinline`, `preload`, `autoplay`, `muted`, `loop` | — | Passed through to the element |
+| `attributes` | — | Merged over everything above |
+| `nonce` | — | Applied to the player script tag, for a strict CSP |
+
+The return value is `Markup`, so Craft's `|attr` filter can add to it after the fact:
+
+```twig
+{{ asset.getBunnyVideoTag({ inline: true })|attr({ class: 'teaser__video' }) }}
+```
+
+### Querying
+
+Asset queries take a `bunnyVideo()` parameter, so finding video assets doesn't mean fetching everything and filtering in Twig:
+
+```twig
+{% set videos = craft.assets.bunnyVideo('ready').limit(6).all() %}
+```
+
+It's an ordinary asset query parameter and chains with the rest:
+
+```twig
+{% set videos = craft.assets
+    .volume('media')
+    .bunnyVideo('ready')
+    .orderBy('dateCreated DESC')
+    .all() %}
+```
+
+| Value | Matches |
+| --- | --- |
+| `true` (the default) | Assets with a Bunny Stream video, whatever state it's in |
+| `false` | Assets without one. Combine with `.kind('video')` for videos that never made it to Bunny. |
+| `'ready'` | Playable videos |
+| `'encoding'` | Still uploading or encoding |
+| `'failed'` | Failed to encode or upload, or gone from Bunny |
+| `'missing'` | Bunny no longer has the video. See [Videos deleted on Bunny](#videos-deleted-on-bunny). |
+| A `VideoStatus` case, a raw code, or an array of any of the above | Exactly those statuses |
+
+The parameter filters on BunnyMate's own table with a subquery, so it costs one `IN (SELECT …)` and works with `count()`, `exists()`, pagination and eager loading like any other parameter. Anything else throws, rather than quietly matching everything.
+
+This works because BunnyMate attaches a behavior to every asset query through `craft\db\Query::EVENT_DEFINE_BEHAVIORS` — the same mechanism custom fields use, without a field existing.
 
 ### Video status
 
