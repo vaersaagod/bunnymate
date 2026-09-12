@@ -10,6 +10,7 @@ use craft\helpers\UrlHelper;
 use vaersaagod\bunnymate\BunnyMate;
 use vaersaagod\bunnymate\enums\VideoStatus;
 
+use yii\base\InvalidArgumentException;
 use yii\base\InvalidConfigException;
 
 /**
@@ -31,6 +32,7 @@ use yii\base\InvalidConfigException;
  * @property-read string|null $downloadUrl
  * @property-read int|null $originalSize
  * @property-read float|null $aspectRatio
+ * @property-read array $mp4Sources
  *
  * @author Værsågod
  * @since 2.1.0
@@ -217,6 +219,68 @@ class BunnyVideo extends Model
         $resolution = $this->resolveRendition($resolution);
 
         return $this->getLibrary()->getVideoUrl($this->videoGuid, "play_$resolution.mp4");
+    }
+
+    /**
+     * Returns MP4 sources for a player that manages the `src` itself.
+     *
+     * [[\vaersaagod\bunnymate\behaviors\VideoAssetBehavior::getBunnyVideoTag()]] renders a
+     * self-contained player. Where something else drives playback -- a video-loop component
+     * that plays on intersection, pauses off-screen and swaps rendition on a media query --
+     * that tag is the wrong shape, because it owns the `<source>` elements it would need to
+     * hand over. This returns just the URLs, to build the element around.
+     *
+     * With no arguments, one source at the highest available rendition:
+     *
+     * ```twig
+     * {{ tag('video', { 'data-sources': video.mp4Sources()|json_encode }) }}
+     * ```
+     *
+     * Given a map of media query to resolution, one source per query, in the order given:
+     *
+     * ```twig
+     * {% set sources = video.mp4Sources({
+     *     '(max-width: 767px)': '480p',
+     *     '(min-width: 768px)': '1080p',
+     * }) %}
+     * ```
+     *
+     * A rendition the video doesn't have falls back to the closest below it, exactly as
+     * [[getMp4Url()]] does, so the same map can be used across videos encoded differently.
+     *
+     * @param array<string, string> $map Media query => resolution
+     * @return array<int, array{src: string, media?: string}> Empty when there's no playable MP4
+     * @throws InvalidArgumentException if given a list rather than a media query map
+     * @since 2.1.0
+     */
+    public function getMp4Sources(array $map = []): array
+    {
+        if ($map === []) {
+            $url = $this->getMp4Url();
+            return $url !== null ? [['src' => $url]] : [];
+        }
+
+        if (array_is_list($map)) {
+            // Left alone, the numeric keys would end up as the media queries, and a player
+            // would silently match none of them
+            throw new InvalidArgumentException(
+                'mp4Sources() expects a map of media query to resolution, e.g. ' .
+                "{ '(max-width: 767px)': '480p' }. A list of resolutions has no media queries " .
+                'to match on.'
+            );
+        }
+
+        $sources = [];
+
+        foreach ($map as $media => $resolution) {
+            $url = $this->getMp4Url($resolution);
+            if ($url === null) {
+                continue;
+            }
+            $sources[] = ['src' => $url, 'media' => (string)$media];
+        }
+
+        return $sources;
     }
 
     /**

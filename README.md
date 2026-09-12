@@ -160,6 +160,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `statusLabel` | A readable state, derived from encoding progress. See [Video status](#video-status). |
 | `hlsUrl` | HLS playlist. Null until playable. |
 | `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given, and an unavailable one falls back to the closest below it. |
+| `mp4Sources(map)` | MP4 sources for a player that manages `src` itself. See [Driving playback yourself](#driving-playback-yourself). |
 | `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |
 | `previewUrl` | Animated WebP preview |
 | `embedUrl(params)` | Bunny's iframe player URL |
@@ -204,6 +205,38 @@ The return value is `Markup`, so Craft's `|attr` filter can add to it after the 
 {{ asset.getBunnyVideoTag({ inline: true })|attr({ class: 'teaser__video' }) }}
 ```
 
+### Driving playback yourself
+
+`getBunnyVideoTag()` is a standalone player: it owns its sources, its loading and its hls.js. That makes it the wrong shape for a video-loop component — the kind that plays on intersection, pauses off-screen, swaps rendition on a media query and falls back to a still image when playback doesn't start. Such a component needs to own the `src` itself.
+
+For that, skip the tag and take the URLs:
+
+```twig
+{% set sources = asset.bunnyVideo.mp4Sources({
+    '(max-width: 767px)': '480p',
+    '(min-width: 768px)': '1080p',
+}) %}
+
+{{ tag('video', {
+    class: 'videoloop',
+    loop: true,
+    muted: true,
+    playsinline: true,
+    'data-sources': sources|json_encode,
+}) }}
+```
+
+`mp4Sources()` returns `[{ src, media }]` in the order given, ready to `json_encode`. With no arguments it returns a single source at the highest available rendition. A rendition the video doesn't have falls back to the closest below it, exactly as `mp4Url()` does, so one map works across videos encoded differently. Passing a plain list throws rather than silently producing numeric media queries nothing will match.
+
+Preconnecting to the library's hostname is worth it, since the first request is deferred:
+
+```twig
+{% html at head %}
+    <link rel="preconnect" href="https://{{ asset.bunnyVideo.library.hostname }}">
+{% endhtml %}
+```
+
+MP4 renditions stop at 1080p — that's Bunny's MP4 fallback, not a BunnyMate limit. Where a loop has to fill a large viewport, `hlsUrl` carries the full ladder up to the source resolution, at the cost of needing a player.
 ### Querying
 
 Asset queries take a `bunnyVideo()` parameter, so finding video assets doesn't mean fetching everything and filtering in Twig:
