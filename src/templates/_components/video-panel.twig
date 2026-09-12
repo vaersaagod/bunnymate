@@ -1,18 +1,25 @@
-{# The id lives on the fieldset so the whole panel can be swapped out after a refresh #}
+{# The id sits on the fieldset so the whole panel can be swapped out after a refresh #}
 <fieldset id="bunnymate-video-panel" data-asset-id="{{ asset.id }}">
 
     <legend class="h6">{{ "Bunny Stream"|t('_bunnymate') }}</legend>
 
-    {{ metadata|raw }}
+    {# Plain `.meta`, not `.meta read-only`: this is the filled card treatment #}
+    <div class="meta">
 
-    {% if not static %}
-        <div class="flex flex-nowrap" style="margin-block-start: var(--s);">
-            {# No name attribute: this panel lives inside Craft's element form #}
-            <button type="button" class="btn small" id="bunnymate-refresh-video">
-                {{ "Refresh from Bunny"|t('_bunnymate') }}
-            </button>
-            <div class="spinner hidden" id="bunnymate-refresh-spinner"></div>
-        </div>
-    {% endif %}
+        {{ fields|raw }}
+
+        {% if not static %}
+            <div class="field">
+                <div class="input ltr">
+                    {# No name attribute: this panel lives inside Craft's element form #}
+                    <button type="button" class="btn small" id="bunnymate-refresh-video">
+                        {{ "Refresh from Bunny"|t('_bunnymate') }}
+                    </button>
+                    <div class="spinner hidden" id="bunnymate-refresh-spinner"></div>
+                </div>
+            </div>
+        {% endif %}
+
+    </div>
 
 </fieldset>

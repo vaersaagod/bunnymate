@@ -457,33 +457,39 @@ class BunnyMate extends Plugin
         $resolutions = $video->getAvailableResolutions();
         $length = $video->getLength();
 
-        $metadata = Cp::metadataHtml([
-            // .status carries no margin of its own, so the gap is set here
+        $rows = [
             Craft::t('_bunnymate', 'Status') => Html::tag('span', '', [
                     'class' => ['status', $status->indicatorClass()],
                     'style' => 'margin-inline-end: 5px;',
                 ]) . Html::encode($statusLabel),
             Craft::t('_bunnymate', 'Duration') => $length
                 ? sprintf('%d:%02d', intdiv($length, 60), $length % 60)
-                : false,
+                : null,
             Craft::t('_bunnymate', 'Dimensions') => $video->getWidth() && $video->getHeight()
                 ? sprintf('%d &times; %d', $video->getWidth(), $video->getHeight())
-                : false,
+                : null,
             Craft::t('_bunnymate', 'Renditions') => !empty($resolutions)
                 ? Html::tag('span', Html::encode(end($resolutions)), [
                     'title' => implode(', ', $resolutions),
                 ]) . ' ' . Html::tag('span', sprintf('(%d)', count($resolutions)), ['class' => 'light'])
-                : false,
+                : null,
             Craft::t('_bunnymate', 'Video ID') => Html::tag('code', Html::encode($video->videoGuid), [
-                'class' => 'break-word',
-                'style' => 'font-size: 0.8em;',
+                'style' => 'font-size: 0.8em; word-break: break-all;',
             ]),
-        ]);
+        ];
+
+        $fields = '';
+        foreach ($rows as $label => $value) {
+            if ($value === null) {
+                continue;
+            }
+            $fields .= $this->_metaFieldHtml($label, $value);
+        }
 
         return Craft::$app->getView()->renderTemplate('_bunnymate/_components/video-panel', [
             'asset' => $asset,
             'video' => $video,
-            'metadata' => $metadata,
+            'fields' => $fields,
             'static' => $static,
         ], View::TEMPLATE_MODE_CP);
     }
@@ -521,6 +527,27 @@ class BunnyMate extends Plugin
                 // Craft only wraps an element's own metaFieldsHtml(), not appended markup
                 $event->html .= $panel;
             }
+        );
+    }
+
+    /**
+     * Returns one static label/value row, in the shape Craft's sidebar cards use.
+     *
+     * Cp::metadataHtml() isn't used here because it hardcodes `.meta read-only`, which is
+     * styled as a naked, muted readout. These rows go inside a plain `.meta`, which is the
+     * filled card treatment, so they have to be `.field` rows like Craft's own.
+     *
+     * @param string $label
+     * @param string $value Already-escaped HTML
+     * @return string
+     */
+    private function _metaFieldHtml(string $label, string $value): string
+    {
+        return Html::tag(
+            'div',
+            Html::tag('div', Html::tag('label', Html::encode($label)), ['class' => 'heading']) .
+            Html::tag('div', $value, ['class' => ['input', 'ltr']]),
+            ['class' => 'field'],
         );
     }
 
