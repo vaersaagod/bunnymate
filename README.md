@@ -6,7 +6,17 @@ Keeping your bunny finely-tuned for a hoppy life, mate!
 
 ## Description
 
-BunnyMate integrates [BunnyCDN](https://bunny.net) with Craft CMS.
+BunnyMate integrates [Bunny](https://bunny.net) with Craft CMS. It does four things, and they can be used together or on their own:
+
+**Pull zone URLs.** A `bunnyPullUrl()` Twig function that rewrites any path or asset URL to a Bunny pull zone, so existing files are served from the CDN without moving them. Several pull zones can be configured and picked between per call. → [Usage](#usage)
+
+**A Bunny Storage filesystem.** Assets stored in a [Bunny Edge Storage](https://bunny.net/storage/) zone and served over the pull zone that fronts it. Asset URLs come from the pull zone config rather than a per-filesystem base URL, and changed files are purged from the CDN automatically. → [Bunny Storage filesystem](#bunny-storage-filesystem)
+
+**Video streaming.** Video assets backed by [Bunny Stream](https://bunny.net/stream/), transcoded and delivered by Bunny while staying ordinary Craft assets. Uploads go straight from the browser to Bunny over a resumable protocol, so PHP's upload limits don't apply, and a signed webhook keeps encoding status in sync. No custom field type: playback URLs, poster frames and metadata hang off `asset.bunnyVideo`. → [Bunny Stream](#bunny-stream)
+
+**CDN cache purging.** Changed files are purged from the edge when assets are added, replaced, moved or deleted, so a replaced file doesn't keep serving its old copy until the TTL expires. → [Cache purging](#cache-purging)
+
+Everything is configured in `config/_bunnymate.php`, with every credential resolvable from an environment variable.
 
 ## Requirements
 
