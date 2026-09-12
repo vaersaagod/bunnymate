@@ -793,8 +793,8 @@ class BunnyMate extends Plugin
             /* Still encoding: a spinner rather than a play control that wouldn't work */
             .thumb.bunnymate-video-thumb--processing::after {
                 background-image: none;
-                border: 2px solid rgba(255, 255, 255, 0.35);
-                border-block-start-color: #fff;
+                border: 2px solid rgba(255, 255, 255, 0.25);
+                border-block-start-color: #ff8800;
                 border-radius: 50%;
                 box-sizing: border-box;
                 animation: bunnymate-spin 0.8s linear infinite;

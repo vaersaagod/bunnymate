@@ -1,0 +1,20 @@
+/* Only while a Bunny upload is in flight: Craft's progress bar is shared, and every other
+   uploader on the page should keep looking like Craft's. */
+
+.bunnymate-uploading .progressbar {
+    border-color: #ff8800;
+}
+
+.bunnymate-uploading .progressbar .progressbar-inner {
+    background-color: #ff8800;
+}
+
+.bunnymate-uploading .progressbar.pending .progressbar-inner {
+    background: repeating-linear-gradient(
+        45deg,
+        #ffb866,
+        #ffb866 8.83885px,
+        #ff8800 8.83885px,
+        #ff8800 17.6777px
+    );
+}

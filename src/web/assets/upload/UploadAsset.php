@@ -37,6 +37,10 @@ class UploadAsset extends AssetBundle
             'bunnymate-stream-uploader.js',
         ];
 
+        $this->css = [
+            'bunnymate-upload.css',
+        ];
+
         parent::init();
     }
 
