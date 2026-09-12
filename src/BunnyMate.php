@@ -449,7 +449,7 @@ class BunnyMate extends Plugin
         }
 
         $status = $video->getStatus();
-        $statusLabel = $status->label();
+        $statusLabel = $video->getStatusLabel();
         if (!$video->getIsReady() && !$video->getIsFailed() && $video->getEncodeProgress() > 0) {
             $statusLabel .= sprintf(' (%d%%)', $video->getEncodeProgress());
         }

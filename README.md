@@ -145,7 +145,8 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | Property | Notes |
 | --- | --- |
 | `isReady` / `isFailed` | Whether the video is playable, or failed to encode |
-| `status` | A `VideoStatus` enum case; `status.label()` for a readable name. `Playable` means one rendition is done and the video plays while encoding continues; `Ready` means every rendition is finished. |
+| `status` | The raw `VideoStatus` enum case from Bunny |
+| `statusLabel` | A readable state: `Playable` while the video plays but is still encoding, `Ready` once encoding finishes. Bunny's own status settles on "one resolution finished" even when a video is complete, so progress is what's reported rather than the status code. |
 | `hlsUrl` | HLS playlist. Null until playable. |
 | `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given, and an unavailable one falls back to the closest below it. |
 | `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |

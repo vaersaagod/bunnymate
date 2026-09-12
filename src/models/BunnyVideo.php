@@ -2,6 +2,7 @@
 
 namespace vaersaagod\bunnymate\models;
 
+use Craft;
 use craft\base\Model;
 use craft\helpers\Json;
 
@@ -103,6 +104,27 @@ class BunnyVideo extends Model
     public function getIsReady(): bool
     {
         return $this->getStatus()->isPlayable();
+    }
+
+    /**
+     * Returns a human-readable label for the video's state.
+     *
+     * Bunny's own status settles on [[VideoStatus::ResolutionFinished]] even once a video is
+     * fully encoded; [[VideoStatus::Finished]] only ever arrives as a passing webhook. Going by
+     * status alone would therefore label two identically finished videos differently, depending
+     * on which webhook happened to land last, so encoding progress is what's reported once a
+     * video is playable.
+     *
+     * @return string
+     */
+    public function getStatusLabel(): string
+    {
+        if (!$this->getIsReady()) {
+            return $this->getStatus()->label();
+        }
+        return $this->getEncodeProgress() >= 100
+            ? Craft::t('_bunnymate', 'Ready')
+            : Craft::t('_bunnymate', 'Playable');
     }
 
     /**
