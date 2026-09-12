@@ -74,7 +74,8 @@
      * @param {String} html
      */
     replacePanel: function (html) {
-      var $new = $(html);
+      // Trim first: leading whitespace makes jQuery parse this as several nodes
+      var $new = $($.trim(html));
       this.$panel.replaceWith($new);
       // Old listeners pointed at DOM that's gone
       this.destroy();

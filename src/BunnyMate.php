@@ -13,6 +13,7 @@ use craft\events\DefineHtmlEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\ReplaceAssetEvent;
+use craft\helpers\Cp;
 use craft\helpers\ElementHelper;
 use craft\helpers\Html;
 use craft\helpers\Json;
@@ -446,9 +447,43 @@ class BunnyMate extends Plugin
         if (!$video) {
             return '';
         }
+
+        $status = $video->getStatus();
+        $statusLabel = $status->label();
+        if (!$video->getIsReady() && !$video->getIsFailed() && $video->getEncodeProgress() > 0) {
+            $statusLabel .= sprintf(' (%d%%)', $video->getEncodeProgress());
+        }
+
+        $resolutions = $video->getAvailableResolutions();
+        $length = $video->getLength();
+
+        $metadata = Cp::metadataHtml([
+            // .status carries no margin of its own, so the gap is set here
+            Craft::t('_bunnymate', 'Status') => Html::tag('span', '', [
+                    'class' => ['status', $status->indicatorClass()],
+                    'style' => 'margin-inline-end: 5px;',
+                ]) . Html::encode($statusLabel),
+            Craft::t('_bunnymate', 'Duration') => $length
+                ? sprintf('%d:%02d', intdiv($length, 60), $length % 60)
+                : false,
+            Craft::t('_bunnymate', 'Dimensions') => $video->getWidth() && $video->getHeight()
+                ? sprintf('%d &times; %d', $video->getWidth(), $video->getHeight())
+                : false,
+            Craft::t('_bunnymate', 'Renditions') => !empty($resolutions)
+                ? Html::tag('span', Html::encode(end($resolutions)), [
+                    'title' => implode(', ', $resolutions),
+                ]) . ' ' . Html::tag('span', sprintf('(%d)', count($resolutions)), ['class' => 'light'])
+                : false,
+            Craft::t('_bunnymate', 'Video ID') => Html::tag('code', Html::encode($video->videoGuid), [
+                'class' => 'break-word',
+                'style' => 'font-size: 0.8em;',
+            ]),
+        ]);
+
         return Craft::$app->getView()->renderTemplate('_bunnymate/_components/video-panel', [
             'asset' => $asset,
             'video' => $video,
+            'metadata' => $metadata,
             'static' => $static,
         ], View::TEMPLATE_MODE_CP);
     }
@@ -482,13 +517,9 @@ class BunnyMate extends Plugin
                     $view->registerAssetBundle(VideoPanelAsset::class);
                     $view->registerJs('new Craft.BunnyMate.VideoPanel();', View::POS_READY);
                 }
-                // Craft only wraps the element's own metaFieldsHtml() in .meta, so anything
-                // appended here has to bring its own fieldset and wrapper
-                $event->html .= Html::tag(
-                    'fieldset',
-                    Html::tag('legend', Craft::t('_bunnymate', 'Bunny Stream'), ['class' => 'h6']) .
-                    Html::tag('div', $panel, ['class' => 'meta']),
-                );
+                // The panel brings its own fieldset, legend and .meta read-only wrapper:
+                // Craft only wraps an element's own metaFieldsHtml(), not appended markup
+                $event->html .= $panel;
             }
         );
     }
