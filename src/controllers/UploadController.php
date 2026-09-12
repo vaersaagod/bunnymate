@@ -263,7 +263,9 @@ class UploadController extends Controller
             return;
         }
         try {
-            $asset->getVolume()->getFs()->write($asset->getPath(), '');
+            // Written through the volume, not its filesystem: the volume is what prepends its
+            // subpath, so going straight to the filesystem drops the file at the root instead
+            $asset->getVolume()->write($asset->getPath(), '');
         } catch (\Throwable $e) {
             // Not worth failing the upload over; the video itself is unaffected
             Craft::warning("Unable to write a placeholder for asset $asset->id: {$e->getMessage()}", __METHOD__);
