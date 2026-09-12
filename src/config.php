@@ -45,6 +45,18 @@ return [
     // Craft's asset indexer doesn't report them as missing
     'writePlaceholderFiles' => true,
 
+    // Where to load hls.js from, for adaptive playback outside Safari. Null never loads it,
+    // and the player falls back to an MP4 rendition instead.
+    'hlsJsUrl' => 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js',
+
+    // Bounds for adaptive playback, e.g. '720p'. HLS only: with MP4 the rendition is chosen
+    // outright, so there's nothing to bound.
+    'defaultMinResolution' => null,
+    'defaultMaxResolution' => null,
+
+    // Whether rendered video tags wait until scrolled into view before loading
+    'lazyloadBunnyVideo' => true,
+
     // Whether original files can be downloaded from the front end. Originals aren't capped the
     // way the MP4 renditions are, so this serves the full-resolution master to anyone who asks.
     'allowOriginalDownloads' => true,

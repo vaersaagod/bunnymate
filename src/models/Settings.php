@@ -84,6 +84,46 @@ class Settings extends Model
     public bool $writePlaceholderFiles = true;
 
     /**
+     * @var string|null Where to load hls.js from, for adaptive playback.
+     *
+     * Only Safari plays HLS natively, so without this the player falls back to an MP4
+     * rendition elsewhere, which works everywhere but tops out at whatever Bunny's MP4
+     * fallback produced. Set to null to never load it.
+     *
+     * @since 2.1.0
+     */
+    public ?string $hlsJsUrl = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+
+    /**
+     * @var string|null The lowest rendition adaptive playback should settle on, e.g. `'720p'`.
+     *
+     * Only applies when a tag uses HLS. Adaptive playback starts low and works upwards, so a
+     * floor stops a slow first measurement leaving a prominent video soft for several seconds.
+     * Nothing to do with MP4 playback, where the rendition is chosen outright.
+     *
+     * @since 2.1.0
+     */
+    public ?string $defaultMinResolution = null;
+
+    /**
+     * @var string|null The highest rendition adaptive playback should use, e.g. `'1080p'`.
+     *
+     * Only applies when a tag uses HLS. hls.js already caps to the size the video is displayed
+     * at, so this is for holding it lower still.
+     *
+     * @since 2.1.0
+     */
+    public ?string $defaultMaxResolution = null;
+
+    /**
+     * @var bool Whether rendered video tags should wait until they're scrolled into view
+     * before loading anything.
+     *
+     * @since 2.1.0
+     */
+    public bool $lazyloadBunnyVideo = true;
+
+    /**
      * @var bool Whether original files can be downloaded from the front end.
      *
      * Originals aren't capped the way the MP4 renditions are, so this serves the

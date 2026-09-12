@@ -30,6 +30,7 @@ use yii\base\InvalidConfigException;
  * @property-read string|null $originalFilename
  * @property-read string|null $downloadUrl
  * @property-read int|null $originalSize
+ * @property-read float|null $aspectRatio
  *
  * @author Værsågod
  * @since 2.1.0
@@ -465,6 +466,23 @@ class BunnyVideo extends Model
     public function getLength(): ?int
     {
         return isset($this->metadata['length']) ? (int)$this->metadata['length'] : null;
+    }
+
+    /**
+     * Returns the video's aspect ratio, if its dimensions are known.
+     *
+     * @return float|null
+     */
+    public function getAspectRatio(): ?float
+    {
+        $width = $this->getWidth();
+        $height = $this->getHeight();
+
+        if (!$width || !$height) {
+            return null;
+        }
+
+        return $width / $height;
     }
 
     /**

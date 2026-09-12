@@ -1,0 +1,26 @@
+{# Bunny publishes no player component, so this is a plain <video> with two sources: Safari
+   plays the HLS playlist natively, everything else falls back to the MP4 without any
+   JavaScript at all. hls.js, when configured, upgrades the rest to adaptive playback. #}
+
+{% set sources = [] %}
+{% if hlsUrl %}
+    {% set sources = sources|merge([{ src: hlsUrl, type: 'application/x-mpegURL' }]) %}
+{% endif %}
+{% if mp4Url %}
+    {% set sources = sources|merge([{ src: mp4Url, type: 'video/mp4' }]) %}
+{% endif %}
+
+{% apply spaceless %}
+    {% apply attr(attributes) %}
+        <video>
+            {% for source in sources %}
+                {# Held in data-src when lazyloading, so nothing downloads until it's in view #}
+                {% if lazyload %}
+                    <source data-src="{{ source.src }}" type="{{ source.type }}">
+                {% else %}
+                    <source src="{{ source.src }}" type="{{ source.type }}">
+                {% endif %}
+            {% endfor %}
+        </video>
+    {% endapply %}
+{% endapply %}

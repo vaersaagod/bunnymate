@@ -24,6 +24,7 @@ use craft\events\ReplaceAssetEvent;
 use craft\helpers\Cp;
 use craft\helpers\ElementHelper;
 use craft\helpers\Html;
+use craft\helpers\Template;
 use craft\helpers\Json;
 use craft\helpers\UrlHelper;
 use craft\helpers\Queue;
@@ -37,11 +38,13 @@ use vaersaagod\bunnymate\assetpreviews\BunnyVideoPreview;
 use vaersaagod\bunnymate\behaviors\VideoAssetBehavior;
 use vaersaagod\bunnymate\behaviors\VideoAssetQueryBehavior;
 use vaersaagod\bunnymate\fs\BunnyStorageFs;
+use vaersaagod\bunnymate\models\BunnyVideo;
 use vaersaagod\bunnymate\models\Settings;
 use vaersaagod\bunnymate\queue\jobs\UploadVideo;
 use vaersaagod\bunnymate\services\Purge;
 use vaersaagod\bunnymate\services\Stream;
 use vaersaagod\bunnymate\services\Videos;
+use vaersaagod\bunnymate\web\assets\player\PlayerAsset;
 use vaersaagod\bunnymate\web\assets\thumb\ThumbAsset;
 use vaersaagod\bunnymate\web\assets\upload\UploadAsset;
 use vaersaagod\bunnymate\web\assets\videopanel\VideoPanelAsset;
@@ -49,6 +52,8 @@ use vaersaagod\bunnymate\web\twig\BunnyMateExtension;
 
 use yii\base\Event;
 use yii\base\InvalidConfigException;
+use Twig\Markup;
+
 use yii\base\ModelEvent;
 
 /**
@@ -888,6 +893,120 @@ class BunnyMate extends Plugin
                 }
             }
         );
+    }
+
+    /**
+     * Renders a `<video>` element for a Bunny Stream video.
+     *
+     * @param Asset $asset
+     * @param BunnyVideo $video
+     * @param array $options
+     * @return Markup
+     * @throws InvalidConfigException
+     * @since 2.1.0
+     */
+    public function renderVideoTag(Asset $asset, BunnyVideo $video, array $options = []): Markup
+    {
+        $settings = $this->getSettings();
+        $view = Craft::$app->getView();
+
+        $inline = (bool)($options['inline'] ?? false);
+        $lazyload = (bool)($options['lazyload'] ?? $settings->lazyloadBunnyVideo);
+        // `hls: false` drops HLS altogether rather than leaving a source nothing will play:
+        // useful for a silent background loop, where an MP4 rendition starts sooner and needs
+        // no player code at all
+        $useHls = (bool)($options['hls'] ?? true);
+        $loadHlsJs = $useHls && !empty($settings->hlsJsUrl);
+
+        $poster = $options['poster'] ?? null;
+        if ($poster === null) {
+            $poster = $video->getThumbnailUrl();
+        }
+
+        $attributes = [
+            'data-bunnymate-video' => true,
+            'controls' => $options['controls'] ?? !$inline,
+            'playsinline' => $options['playsinline'] ?? true,
+            'preload' => $options['preload'] ?? 'metadata',
+            'poster' => $poster ?: false,
+            // An aspect ratio up front keeps the page from jumping once metadata arrives
+            'style' => $video->getAspectRatio()
+                ? sprintf('aspect-ratio: %d / %d;', $video->getWidth(), $video->getHeight())
+                : false,
+        ];
+
+        if ($inline) {
+            $attributes += [
+                'autoplay' => $options['autoplay'] ?? true,
+                'muted' => $options['muted'] ?? true,
+                'loop' => $options['loop'] ?? true,
+                'disablepictureinpicture' => true,
+            ];
+        } else {
+            foreach (['autoplay', 'muted', 'loop'] as $attribute) {
+                if (isset($options[$attribute])) {
+                    $attributes[$attribute] = $options[$attribute];
+                }
+            }
+        }
+
+        if ($lazyload) {
+            $attributes['data-bunnymate-lazyload'] = true;
+        }
+
+        if ($loadHlsJs) {
+            $attributes['data-bunnymate-hls'] = $settings->hlsJsUrl;
+
+            // Bounds are meaningless without adaptive playback, so they ride along with it
+            $min = $this->_resolutionHeight($options['minResolution'] ?? $settings->defaultMinResolution);
+            $max = $this->_resolutionHeight($options['maxResolution'] ?? $settings->defaultMaxResolution);
+
+            if ($min !== null) {
+                $attributes['data-bunnymate-min-height'] = $min;
+            }
+            if ($max !== null) {
+                $attributes['data-bunnymate-max-height'] = $max;
+            }
+        }
+
+        $attributes = array_merge($attributes, $options['attributes'] ?? []);
+
+        $html = $view->renderTemplate('_bunnymate/_components/bunny-video', [
+            'hlsUrl' => $useHls ? $video->getHlsUrl() : null,
+            'mp4Url' => $video->getMp4Url($options['resolution'] ?? $settings->videoUrlRendition),
+            'attributes' => array_filter($attributes, static fn($value): bool => $value !== false && $value !== null),
+            'lazyload' => $lazyload,
+            // Rendered in control panel mode because that's the only template root a plugin
+            // gets by default; the markup it produces is plain front-end HTML
+        ], View::TEMPLATE_MODE_CP);
+
+        // Nothing for it to do when the tag neither defers its sources nor needs hls.js
+        if ($lazyload || $loadHlsJs) {
+            $view->registerJsFile(
+                PlayerAsset::scriptUrl(),
+                array_filter(['defer' => true, 'nonce' => $options['nonce'] ?? null]),
+            );
+        }
+
+        // Trimmed: the template's variable setup leaves whitespace ahead of the element
+        return Template::raw(trim($html));
+    }
+
+    /**
+     * Returns the pixel height a rendition name refers to.
+     *
+     * @param string|int|null $resolution e.g. `'720p'`
+     * @return int|null
+     */
+    private function _resolutionHeight(string|int|null $resolution): ?int
+    {
+        if ($resolution === null || $resolution === '') {
+            return null;
+        }
+
+        $height = (int)$resolution;
+
+        return $height > 0 ? $height : null;
     }
 
 
