@@ -145,7 +145,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | Property | Notes |
 | --- | --- |
 | `isReady` / `isFailed` | Whether the video is playable, or failed to encode |
-| `status` | A `VideoStatus` enum case; `status.label()` for a readable name |
+| `status` | A `VideoStatus` enum case; `status.label()` for a readable name. `Playable` means one rendition is done and the video plays while encoding continues; `Ready` means every rendition is finished. |
 | `hlsUrl` | HLS playlist. Null until playable. |
 | `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given. |
 | `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |
@@ -156,7 +156,9 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 
 ### Asset URLs
 
-Assets backed by Bunny Stream hold no file of their own, so `asset.url` would otherwise resolve to a path that 404s. BunnyMate overrides it via `Asset::EVENT_BEFORE_DEFINE_URL`: a video asset returns its HLS URL, and a transform request returns the poster frame instead. Set `overrideAssetUrls` to `false` to opt out.
+Assets backed by Bunny Stream hold no file of their own, so `asset.url` would otherwise resolve to a path that 404s. BunnyMate overrides it via `Asset::EVENT_BEFORE_DEFINE_URL`, and a transform request returns the poster frame instead. Set `overrideAssetUrls` to `false` to opt out.
+
+`asset.url` returns the highest **MP4** rendition rather than the HLS playlist, because this URL is what ends up in plain `<video>` elements, including Craft's own on the asset edit screen, and only Safari plays HLS natively. Templates that want adaptive streaming should ask for `asset.bunnyVideo.hlsUrl`, and that needs a player like hls.js outside Safari.
 
 ### Uploading
 

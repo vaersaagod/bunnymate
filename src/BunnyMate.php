@@ -234,6 +234,10 @@ class BunnyMate extends Plugin
     /**
      * Points `asset.url` at the Bunny playback URL for Bunny Stream videos.
      *
+     * The highest MP4 rendition is preferred over the HLS playlist, since this URL is what
+     * ends up in plain <video> elements. Templates wanting adaptive streaming can ask for
+     * `asset.bunnyVideo.hlsUrl` directly.
+     *
      * These assets have no file of their own, so without this their URL resolves to a path
      * that 404s. `beforeDefineUrl` is used rather than `defineUrl` because setting the URL
      * here makes Craft skip its own resolution entirely, which would otherwise go looking on
@@ -262,7 +266,10 @@ class BunnyMate extends Plugin
                     // A transform on a video can only sensibly mean the poster frame
                     $url = $event->transform !== null
                         ? $video->getThumbnailUrl()
-                        : ($video->getHlsUrl() ?? $video->getThumbnailUrl());
+                        // An MP4 rendition first: this URL ends up in plain <video> elements,
+                        // including Craft's own on the asset edit screen, and only Safari
+                        // plays an HLS playlist natively
+                        : ($video->getMp4Url() ?? $video->getHlsUrl() ?? $video->getThumbnailUrl());
                 } catch (\Throwable $e) {
                     Craft::error($e->getMessage(), __METHOD__);
                     return;

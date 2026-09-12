@@ -21,7 +21,9 @@ enum VideoStatus: int
     case Queued = 0;
     case Processing = 1;
     case Encoding = 2;
+    /** Encoding finished; every rendition is available */
     case Finished = 3;
+    /** One rendition is available, so the video plays, but encoding is still running */
     case ResolutionFinished = 4;
     case Failed = 5;
     case PresignedUploadStarted = 6;
@@ -106,7 +108,7 @@ enum VideoStatus: int
             self::Queued => Craft::t('_bunnymate', 'Queued'),
             self::Processing => Craft::t('_bunnymate', 'Processing'),
             self::Encoding => Craft::t('_bunnymate', 'Encoding'),
-            self::Finished => Craft::t('_bunnymate', 'Finished'),
+            self::Finished => Craft::t('_bunnymate', 'Ready'),
             self::ResolutionFinished => Craft::t('_bunnymate', 'Playable'),
             self::Failed => Craft::t('_bunnymate', 'Failed'),
             self::PresignedUploadStarted => Craft::t('_bunnymate', 'Upload started'),
