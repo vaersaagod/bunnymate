@@ -64,11 +64,15 @@ class UploadController extends Controller
             throw new BadRequestHttpException("Volume \"$volume->handle\" is not configured for Bunny Stream");
         }
 
-        // Keep the extension, but let Craft settle on a filename that's safe and unique
         $filename = AssetsHelper::prepareAssetName($filename);
         if (!in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), $this->_allowedExtensions(), true)) {
             throw new BadRequestHttpException("Files of this type can't be uploaded here");
         }
+
+        // The source file is never stored: Bunny keeps it and serves MP4 and HLS. Craft
+        // derives an asset's MIME type from its extension, so leaving a .mov here would have
+        // it advertise video/quicktime for an MP4 URL, which browsers refuse to play.
+        $filename = sprintf('%s.mp4', pathinfo($filename, PATHINFO_FILENAME));
 
         $stream = BunnyMate::getInstance()->getStream();
         $videoGuid = $stream->createVideo($library, pathinfo($filename, PATHINFO_FILENAME));

@@ -178,6 +178,8 @@ Craft handles two small requests per file: one to create the video and its asset
 
 Only volumes listed in `volumeVideoLibraries` upload this way, and only for users with `saveAssets` permission on them.
 
+Uploaded videos are named `.mp4` whatever the source file was. The source is never stored, since Bunny keeps it and serves MP4 and HLS, and Craft derives an asset's MIME type from its extension, so a `.mov` asset would advertise `video/quicktime` for an MP4 URL and browsers would refuse to play it.
+
 #### Videos that arrive some other way
 
 A video that reaches a mapped volume by any other route, a normal CP upload, a feed import, or a programmatic save, is also sent to Bunny, by asking Bunny to fetch it from the asset's URL. That means the volume has to be reachable from the public internet: a local filesystem on a dev machine can't be pulled from, and the job will log an error. A volume on the Bunny Storage filesystem works well here, since the file is already on Bunny's network.

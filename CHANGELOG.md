@@ -14,7 +14,7 @@
 - Added the `videoLibraries`, `volumeVideoLibraries` and `overrideAssetUrls` settings.
 - `asset.url` now returns the Bunny playback URL for video assets backed by Bunny Stream: an MP4 rendition, so it plays in a plain `<video>` element. Added the `videoUrlRendition` setting to choose which.
 - `mp4Url()` now falls back to the closest available rendition, rather than returning null, when the one asked for wasn't encoded.
-- Videos uploaded to a mapped volume through the regular Assets screen now go straight from the browser to Bunny Stream over TUS, bypassing PHP's upload limits entirely.
+- Videos uploaded to a mapped volume through the regular Assets screen now go straight from the browser to Bunny Stream over TUS, bypassing PHP's upload limits entirely. They're named `.mp4` whatever the source was, since that's what Bunny serves.
 - Videos that reach a mapped volume any other way (a normal upload, an import, a programmatic save) are now sent to Bunny Stream too, via Bunny's URL fetch. Added the `autoUploadVideos` setting to control this.
 - Replacing a video asset's file now replaces its Bunny Stream video.
 - Video assets now use Bunny's poster frame as their control panel thumbnail, rather than a generic file-type icon.
