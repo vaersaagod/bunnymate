@@ -38,6 +38,10 @@ return [
     // asset's URL, so the volume must be reachable from the public internet.
     'autoUploadVideos' => true,
 
+    // Whether to write an empty placeholder file for videos uploaded straight to Bunny, so
+    // Craft's asset indexer doesn't report them as missing
+    'writePlaceholderFiles' => true,
+
     // Whether to resize control panel thumbnails with Imager X, when it's installed
     'transformThumbnails' => true,
 

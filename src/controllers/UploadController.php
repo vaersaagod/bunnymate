@@ -106,6 +106,8 @@ class UploadController extends Controller
             [],
         );
 
+        $this->_writePlaceholderFile($asset);
+
         return $this->asJson([
             'success' => true,
             'assetId' => $asset->id,
@@ -231,6 +233,32 @@ class UploadController extends Controller
 
     // Private Methods
     // =========================================================================
+
+    /**
+     * Writes an empty file at the asset's path, so Craft's asset indexer can find it.
+     *
+     * The bytes live on Bunny, not in the volume, so without this the indexer lists these
+     * assets as missing. That isn't cosmetic: its review modal pre-checks every missing asset
+     * and the primary button deletes them, which would take the Bunny videos with them.
+     *
+     * The file has to sit at the asset's exact path. A placeholder under any other name would
+     * itself be indexed as a new, unrecognised file.
+     *
+     * @param Asset $asset
+     * @return void
+     */
+    private function _writePlaceholderFile(Asset $asset): void
+    {
+        if (!BunnyMate::getInstance()->getSettings()->writePlaceholderFiles) {
+            return;
+        }
+        try {
+            $asset->getVolume()->getFs()->write($asset->getPath(), '');
+        } catch (\Throwable $e) {
+            // Not worth failing the upload over; the video itself is unaffected
+            Craft::warning("Unable to write a placeholder for asset $asset->id: {$e->getMessage()}", __METHOD__);
+        }
+    }
 
     /**
      * Returns the video extensions Craft allows to be uploaded.

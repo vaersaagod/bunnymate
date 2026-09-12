@@ -69,6 +69,21 @@ class Settings extends Model
     public bool $autoUploadVideos = true;
 
     /**
+     * @var bool Whether an empty placeholder file should be written for videos uploaded
+     * straight to Bunny.
+     *
+     * Those assets have no bytes in the volume, and Craft's asset indexer lists assets whose
+     * files it can't find as missing, offering to delete them with every one pre-selected.
+     * The placeholder gives the indexer something to match.
+     *
+     * The cost is that the asset's reported size is 0, and anything reading the asset's own
+     * file gets an empty one. Playback is unaffected, since that comes from Bunny.
+     *
+     * @since 2.1.0
+     */
+    public bool $writePlaceholderFiles = true;
+
+    /**
      * @var bool Whether control panel thumbnails should be resized with Imager X, when it's
      * installed.
      *

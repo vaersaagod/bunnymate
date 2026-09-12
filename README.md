@@ -208,9 +208,15 @@ If videos need to be genuinely protected, enable **token authentication** on the
 
 With both off, playback URLs are public to anyone holding them. Video GUIDs are random UUIDs, so they aren't guessable, which is usually fine for non-sensitive content.
 
-### Known limitations
+### Placeholder files
 
-Because these assets have no file on the filesystem, running **Update Asset Indexes** on a Bunny Stream volume reports them as missing.
+Videos uploaded straight to Bunny have no bytes in the volume, which Craft's asset indexer treats as a missing file. That matters more than it sounds: the indexer's review dialog pre-selects every missing asset and its primary button deletes them, which would take the Bunny videos with them.
+
+So an empty file is written at the asset's path when the upload starts, purely to give the indexer something to match. It has to be the asset's own filename, since a placeholder under any other name would itself be indexed as a new file.
+
+The cost is that anything reading the asset's own file gets an empty one. Playback, thumbnails and metadata all come from Bunny, so they're unaffected. Set `writePlaceholderFiles` to `false` to turn this off.
+
+### Known limitations
 
 An asset that is moved to the trash and later purged by garbage collection leaves its Bunny video behind, since Craft's GC deletes elements with raw SQL and fires no element events. Deleting an asset outright removes the Bunny video correctly.
 
