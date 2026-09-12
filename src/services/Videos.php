@@ -139,25 +139,30 @@ class Videos extends Component
             Craft::info("Ignoring webhook for unknown video \"$videoGuid\"", __METHOD__);
             return false;
         }
-        if ($status->isLifecycle()) {
-            $record->status = $status->value;
+        if ($record->assetId === null) {
+            // The asset was purged; garbage collection deals with the video
+            return false;
         }
+
         // Pull the full video model down, so metadata stays in step with the status
+        $metadata = null;
         try {
-            $library = BunnyMate::getInstance()->getStream()->getLibrary($record->library);
-            $metadata = BunnyMate::getInstance()->getStream()->getVideo($library, $videoGuid);
-            if ($metadata !== null) {
-                $record->metadata = Json::encode($metadata);
-            }
+            $stream = BunnyMate::getInstance()->getStream();
+            $metadata = $stream->getVideo($stream->getLibrary($record->library), $videoGuid);
         } catch (\Throwable $e) {
             Craft::error("Unable to refresh metadata for video \"$videoGuid\": {$e->getMessage()}", __METHOD__);
         }
-        if (!$record->save()) {
-            Craft::error("Unable to save video \"$videoGuid\": " . Json::encode($record->getErrors()), __METHOD__);
-            return false;
-        }
-        unset($this->_videosByAssetId[$record->assetId]);
-        return true;
+
+        // Deliberately routed through saveVideo rather than writing the record here: that is
+        // what carries our own metadata across a refresh, measures the MP4 renditions, and
+        // copies dimensions and size onto the asset
+        return $this->saveVideo(
+            $record->assetId,
+            $record->library,
+            $videoGuid,
+            $status->isLifecycle() ? $status : null,
+            $metadata,
+        );
     }
 
     /**
