@@ -38,10 +38,7 @@
                     <div class="flex" style="flex-wrap: wrap; gap: var(--xs);">
 
                         {% if originalUrl %}
-                            <a class="btn small" href="{{ originalUrl }}" download>
-                                {{ "Original"|t('_bunnymate') }}
-                                {%- if originalSize %} ({{ originalSize|filesize }}){% endif %}
-                            </a>
+                            <a class="btn small" href="{{ originalUrl }}" download>{{ "Original"|t('_bunnymate') }}</a>
                         {% endif %}
 
                         {% for resolution, url in renditions %}
