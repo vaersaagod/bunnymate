@@ -37,17 +37,21 @@ class DownloadController extends Controller
     // =========================================================================
 
     /**
-     * Streams an asset's original file back as a download.
+     * Streams one of an asset's files back as a download.
+     *
+     * With no resolution, that's the originally uploaded file. With one, it's that MP4
+     * rendition.
      *
      * @return Response
      * @throws BadRequestHttpException
      * @throws ForbiddenHttpException if downloads aren't allowed from the front end
-     * @throws NotFoundHttpException if the asset has no original to download
+     * @throws NotFoundHttpException if the file isn't available
      */
-    public function actionOriginal(): Response
+    public function actionVideo(): Response
     {
         $request = Craft::$app->getRequest();
         $assetId = (int)$request->getRequiredParam('assetId');
+        $resolution = $request->getParam('resolution') ?: null;
 
         $asset = Craft::$app->getAssets()->getAssetById($assetId);
         if (!$asset) {
@@ -63,13 +67,21 @@ class DownloadController extends Controller
         }
 
         $video = BunnyMate::getInstance()->getVideos()->getVideoForAsset($asset);
-        if (!$video || !$video->getHasOriginal()) {
-            throw new NotFoundHttpException('This asset has no original file.');
+        if (!$video) {
+            throw new NotFoundHttpException('This asset has no Bunny Stream video.');
         }
 
-        $url = $video->getOriginalUrl();
+        if ($resolution !== null) {
+            if (!in_array($resolution, $video->getAvailableMp4Resolutions(), true)) {
+                throw new NotFoundHttpException("This video has no $resolution rendition.");
+            }
+            $url = $video->getMp4Url($resolution);
+        } else {
+            $url = $video->getOriginalUrl();
+        }
+
         if ($url === null) {
-            throw new NotFoundHttpException('This asset has no original file.');
+            throw new NotFoundHttpException('This file isn’t available.');
         }
 
         try {
@@ -91,7 +103,7 @@ class DownloadController extends Controller
             throw new NotFoundHttpException('This asset’s original file couldn’t be fetched.');
         }
 
-        $filename = $video->getOriginalFilename() ?? $asset->getFilename();
+        $filename = $this->_filename($asset, $video, $resolution);
 
         // Streamed rather than buffered: originals aren't capped like the renditions are, so
         // this can be a multi-gigabyte file
@@ -104,6 +116,30 @@ class DownloadController extends Controller
                 'inline' => false,
             ],
         );
+    }
+
+    // Private Methods
+    // =========================================================================
+
+    /**
+     * Returns the filename a download should be saved as.
+     *
+     * The original keeps the name it was uploaded under, since the asset itself was renamed to
+     * .mp4. Renditions are named after the asset with their resolution appended, so several of
+     * them can be downloaded without overwriting each other.
+     *
+     * @param Asset $asset
+     * @param \vaersaagod\bunnymate\models\BunnyVideo $video
+     * @param string|null $resolution
+     * @return string
+     */
+    private function _filename(Asset $asset, $video, ?string $resolution): string
+    {
+        if ($resolution === null) {
+            return $video->getOriginalFilename() ?? $asset->getFilename();
+        }
+
+        return sprintf('%s-%s.mp4', pathinfo($asset->getFilename(), PATHINFO_FILENAME), $resolution);
     }
 
 }

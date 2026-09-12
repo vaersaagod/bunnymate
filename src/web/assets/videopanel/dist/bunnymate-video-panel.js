@@ -71,12 +71,17 @@
     },
 
     /**
-     * @param {String} html
+     * @param {String} html Both the panel and the downloads section
      */
     replacePanel: function (html) {
-      // Trim first: leading whitespace makes jQuery parse this as several nodes
-      var $new = $($.trim(html));
+      // The two sections are siblings rather than nested, since Craft styles sidebar legends
+      // with a direct-child selector, so this is several nodes
+      var $new = $($.parseHTML($.trim(html)));
+      var $oldDownloads = $('#bunnymate-video-downloads');
+
       this.$panel.replaceWith($new);
+      $oldDownloads.remove();
+
       // Old listeners pointed at DOM that's gone
       this.destroy();
       new Craft.BunnyMate.VideoPanel();

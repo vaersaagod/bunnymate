@@ -480,9 +480,10 @@ class BunnyMate extends Plugin
             Craft::t('_bunnymate', 'Video ID') => Html::tag('code', Html::encode($video->videoGuid), [
                 'style' => 'font-size: 0.8em; word-break: break-all;',
             ]),
-            Craft::t('_bunnymate', 'Original') => $video->getHasOriginal()
-                ? Html::a(Craft::t('_bunnymate', 'Download'), $video->getDownloadUrl(), [
-                    'download' => true,
+            // What the file was actually called, before the asset was renamed to .mp4
+            Craft::t('_bunnymate', 'Original') => $video->getOriginalFilename() !== null
+                ? Html::tag('span', Html::encode($video->getOriginalFilename()), [
+                    'style' => 'word-break: break-all;',
                 ])
                 : null,
         ];
@@ -495,10 +496,19 @@ class BunnyMate extends Plugin
             $fields .= $this->_metaFieldHtml($label, $value);
         }
 
+        // Highest first: the useful ones are at that end of the list
+        $renditions = [];
+        foreach (array_reverse($video->getAvailableMp4Resolutions()) as $resolution) {
+            $renditions[$resolution] = $video->getDownloadUrl($resolution);
+        }
+
         return Craft::$app->getView()->renderTemplate('_bunnymate/_components/video-panel', [
             'asset' => $asset,
             'video' => $video,
             'fields' => $fields,
+            'originalUrl' => $video->getDownloadUrl(),
+            'originalSize' => $video->getOriginalSize(),
+            'renditions' => $renditions,
             'static' => $static,
         ], View::TEMPLATE_MODE_CP);
     }

@@ -338,7 +338,9 @@ class BunnyVideo extends Model
     }
 
     /**
-     * Returns a URL that downloads the original file, rather than playing it.
+     * Returns a URL that downloads a file, rather than playing it.
+     *
+     * With no resolution that's the originally uploaded file; with one it's that MP4 rendition.
      *
      * Bunny serves the original as video/mp4 with no Content-Disposition, and offers no way to
      * change that, so a browser plays it instead of saving it. `download` on a link doesn't
@@ -347,12 +349,24 @@ class BunnyVideo extends Model
      *
      * @return string|null Null when the library doesn't keep originals
      */
-    public function getDownloadUrl(): ?string
+    public function getDownloadUrl(?string $resolution = null): ?string
     {
-        if (!$this->getHasOriginal() || $this->assetId === null) {
+        if ($this->assetId === null) {
             return null;
         }
-        return UrlHelper::actionUrl('_bunnymate/download/original', ['assetId' => $this->assetId]);
+        if ($resolution === null && !$this->getHasOriginal()) {
+            return null;
+        }
+        if ($resolution !== null && !in_array($resolution, $this->getAvailableMp4Resolutions(), true)) {
+            return null;
+        }
+
+        $params = ['assetId' => $this->assetId];
+        if ($resolution !== null) {
+            $params['resolution'] = $resolution;
+        }
+
+        return UrlHelper::actionUrl('_bunnymate/download/video', $params);
     }
 
     /**

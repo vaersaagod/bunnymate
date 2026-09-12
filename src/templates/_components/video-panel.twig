@@ -11,11 +11,13 @@
         {% if not static %}
             <div class="field">
                 <div class="input ltr">
-                    {# No name attribute: this panel lives inside Craft's element form #}
-                    <button type="button" class="btn small" id="bunnymate-refresh-video">
-                        {{ "Refresh from Bunny"|t('_bunnymate') }}
-                    </button>
-                    <div class="spinner hidden" id="bunnymate-refresh-spinner"></div>
+                    <div class="flex flex-nowrap">
+                        {# No name attribute: this panel lives inside Craft's element form #}
+                        <button type="button" class="btn small" id="bunnymate-refresh-video">
+                            {{ "Refresh"|t('_bunnymate') }}
+                        </button>
+                        <div class="spinner hidden" id="bunnymate-refresh-spinner"></div>
+                    </div>
                 </div>
             </div>
         {% endif %}
@@ -23,3 +25,33 @@
     </div>
 
 </fieldset>
+
+{# A sibling, not nested: Craft styles sidebar legends with `.details > fieldset > legend` #}
+{% if not static and (originalUrl or renditions) %}
+    <fieldset id="bunnymate-video-downloads">
+
+        <legend class="h6">{{ "Downloads"|t('_bunnymate') }}</legend>
+
+        <div class="meta">
+            <div class="field">
+                <div class="input ltr">
+                    <div class="flex" style="flex-wrap: wrap; gap: var(--xs);">
+
+                        {% if originalUrl %}
+                            <a class="btn small" href="{{ originalUrl }}" download>
+                                {{ "Original"|t('_bunnymate') }}
+                                {%- if originalSize %} ({{ originalSize|filesize }}){% endif %}
+                            </a>
+                        {% endif %}
+
+                        {% for resolution, url in renditions %}
+                            <a class="btn small" href="{{ url }}" download>{{ resolution }}</a>
+                        {% endfor %}
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </fieldset>
+{% endif %}
