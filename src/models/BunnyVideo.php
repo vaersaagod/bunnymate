@@ -5,6 +5,7 @@ namespace vaersaagod\bunnymate\models;
 use Craft;
 use craft\base\Model;
 use craft\helpers\Json;
+use craft\helpers\UrlHelper;
 
 use vaersaagod\bunnymate\BunnyMate;
 use vaersaagod\bunnymate\enums\VideoStatus;
@@ -26,6 +27,8 @@ use yii\base\InvalidConfigException;
  * @property-read string|null $previewUrl
  * @property-read bool $hasOriginal
  * @property-read string|null $originalUrl
+ * @property-read string|null $originalFilename
+ * @property-read string|null $downloadUrl
  *
  * @author Værsågod
  * @since 2.1.0
@@ -38,6 +41,9 @@ class BunnyVideo extends Model
 
     /** The metadata key the measured MP4 renditions are stored under */
     public const MP4_RESOLUTIONS_KEY = 'bunnymateMp4Resolutions';
+
+    /** The metadata key the uploaded filename is stored under */
+    public const ORIGINAL_FILENAME_KEY = 'bunnymateOriginalFilename';
 
     /**
      * The highest rendition assumed to have an MP4, until one is measured.
@@ -297,6 +303,39 @@ class BunnyVideo extends Model
             return null;
         }
         return $this->getLibrary()->getVideoUrl($this->videoGuid, 'original');
+    }
+
+    /**
+     * Returns the filename the video was uploaded as.
+     *
+     * Assets are renamed to .mp4 on upload, since that's what Bunny serves, so this is the
+     * only record of what the file was actually called. Null for videos that predate this
+     * being stored, or that reached Bunny some other way.
+     *
+     * @return string|null
+     */
+    public function getOriginalFilename(): ?string
+    {
+        $filename = $this->metadata[self::ORIGINAL_FILENAME_KEY] ?? null;
+        return is_string($filename) && $filename !== '' ? $filename : null;
+    }
+
+    /**
+     * Returns a URL that downloads the original file, rather than playing it.
+     *
+     * Bunny serves the original as video/mp4 with no Content-Disposition, and offers no way to
+     * change that, so a browser plays it instead of saving it. `download` on a link doesn't
+     * help either, since it's ignored cross-origin. This URL goes through Craft, which sets the
+     * header and the filename and streams the file on from Bunny.
+     *
+     * @return string|null Null when the library doesn't keep originals
+     */
+    public function getDownloadUrl(): ?string
+    {
+        if (!$this->getHasOriginal() || $this->assetId === null) {
+            return null;
+        }
+        return UrlHelper::actionUrl('_bunnymate/download/original', ['assetId' => $this->assetId]);
     }
 
     /**

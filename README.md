@@ -163,7 +163,9 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |
 | `previewUrl` | Animated WebP preview |
 | `embedUrl(params)` | Bunny's iframe player URL |
-| `hasOriginal` / `originalUrl` | The uploaded file itself. See [The original file](#the-original-file). |
+| `hasOriginal` / `originalUrl` | The uploaded file itself, played in the browser. See [The original file](#the-original-file). |
+| `downloadUrl` | The same file, served as a download with its original filename |
+| `originalFilename` | What the file was uploaded as, before being renamed to `.mp4` |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
 | `availableResolutions` | Every rendition Bunny encoded for HLS, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
 | `availableMp4Resolutions` | Those an MP4 actually exists for, measured rather than assumed. See [Renditions](#renditions). |
@@ -308,19 +310,27 @@ Where a library keeps original files, Bunny serves the upload back untouched, an
 
 ```twig
 {% if video.hasOriginal %}
-    <a href="{{ video.originalUrl }}" download>{{ "Download original"|t }}</a>
+    <a href="{{ video.downloadUrl }}">{{ "Download original"|t }}</a>
 {% endif %}
 ```
 
+Use `downloadUrl` rather than `originalUrl` for anything meant to save the file. Bunny serves originals as `video/mp4` with no `Content-Disposition`, and offers no way to change that: no query parameter sets it and the pull zone has no setting for it. A `download` attribute doesn't help either, since browsers ignore it cross-origin, so `originalUrl` opens the video in the browser rather than saving it.
+
+`downloadUrl` goes through Craft, which sets the header and the filename and streams the file on from Bunny. Because uploads are renamed to `.mp4`, the filename it uses is the one the file was uploaded as, kept alongside the video's metadata; videos uploaded before that was recorded fall back to the asset's filename.
+
+Front-end downloads are governed by `allowOriginalDownloads`. Control panel downloads aren't, and are gated on the asset's own view permission instead.
+
 This matters more than it might look, because assets uploaded straight to Bunny hold no file of their own: the original on Bunny is the only copy of what was uploaded, and this is how to get it back.
 
-Three things to weigh:
+Four things to weigh:
 
 Unlike the MP4 renditions, this isn't capped. A 4K upload is served back at 4K, at its full original size, which may be hundreds of megabytes.
 
 Keeping originals roughly doubles what a video costs to store, since the upload sits alongside every rendition.
 
-And the URL is guessable from the video's ID, so anyone holding it can download the full-resolution master. Enable token authentication on the library if that matters, and BunnyMate will sign this URL along with the others.
+The URL is guessable from the video's ID, so anyone holding it can download the full-resolution master. Enable token authentication on the library if that matters, and BunnyMate will sign this URL along with the others.
+
+And `downloadUrl` streams through your server rather than straight from the CDN, since that's the only way to set the download header. That's fine for the occasional download, but it means your own bandwidth carries it. Set `allowOriginalDownloads` to `false` to keep that off the front end.
 
 `hasOriginal` is false when the library discards originals after encoding, in which case there's nothing to recover.
 

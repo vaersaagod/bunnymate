@@ -45,6 +45,10 @@ return [
     // Craft's asset indexer doesn't report them as missing
     'writePlaceholderFiles' => true,
 
+    // Whether original files can be downloaded from the front end. Originals aren't capped the
+    // way the MP4 renditions are, so this serves the full-resolution master to anyone who asks.
+    'allowOriginalDownloads' => true,
+
     // Whether to resize control panel thumbnails with Imager X, when it's installed
     'transformThumbnails' => true,
 

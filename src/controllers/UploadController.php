@@ -10,6 +10,7 @@ use craft\web\Controller;
 
 use vaersaagod\bunnymate\BunnyMate;
 use vaersaagod\bunnymate\enums\VideoStatus;
+use vaersaagod\bunnymate\models\BunnyVideo;
 
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
@@ -72,6 +73,7 @@ class UploadController extends Controller
         // The source file is never stored: Bunny keeps it and serves MP4 and HLS. Craft
         // derives an asset's MIME type from its extension, so leaving a .mov here would have
         // it advertise video/quicktime for an MP4 URL, which browsers refuse to play.
+        $originalFilename = $filename;
         $filename = sprintf('%s.mp4', pathinfo($filename, PATHINFO_FILENAME));
 
         $stream = BunnyMate::getInstance()->getStream();
@@ -107,7 +109,9 @@ class UploadController extends Controller
             $library->handle,
             $videoGuid,
             VideoStatus::Queued,
-            [],
+            // The asset is renamed to .mp4, so this is the only record of what was uploaded,
+            // and it's what a download of the original should be called
+            [BunnyVideo::ORIGINAL_FILENAME_KEY => $originalFilename],
         );
 
         $this->_writePlaceholderFile($asset);

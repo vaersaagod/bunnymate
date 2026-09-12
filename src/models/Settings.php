@@ -84,6 +84,17 @@ class Settings extends Model
     public bool $writePlaceholderFiles = true;
 
     /**
+     * @var bool Whether original files can be downloaded from the front end.
+     *
+     * Originals aren't capped the way the MP4 renditions are, so this serves the
+     * full-resolution master to anyone who asks for it. Control panel downloads are gated on
+     * the asset's own permissions and aren't affected by this.
+     *
+     * @since 2.1.0
+     */
+    public bool $allowOriginalDownloads = true;
+
+    /**
      * @var bool Whether control panel thumbnails should be resized with Imager X, when it's
      * installed.
      *

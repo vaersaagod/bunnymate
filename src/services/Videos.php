@@ -96,7 +96,15 @@ class Videos extends Component
             $record->status = $status->value;
         }
         if ($metadata !== null) {
-            $record->metadata = Json::encode($this->_withMp4Resolutions($metadata, $libraryHandle, $videoGuid));
+            $metadata = $this->_withMp4Resolutions($metadata, $libraryHandle, $videoGuid);
+            // Bunny doesn't know the uploaded filename, so carry ours across refreshes
+            $existing = Json::decodeIfJson($record->getOldAttribute('metadata') ?? '') ?: [];
+            foreach ([BunnyVideo::ORIGINAL_FILENAME_KEY, BunnyVideo::MP4_RESOLUTIONS_KEY] as $key) {
+                if (!isset($metadata[$key]) && isset($existing[$key])) {
+                    $metadata[$key] = $existing[$key];
+                }
+            }
+            $record->metadata = Json::encode($metadata);
         }
         if (!$record->save()) {
             Craft::error("Unable to save video for asset $assetId: " . Json::encode($record->getErrors()), __METHOD__);
