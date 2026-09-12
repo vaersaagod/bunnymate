@@ -74,38 +74,79 @@
      */
     setParams: function (params) {
       this.base(params);
-      if (params && params.folderId) {
-        this.loadFolderInfo(params.folderId);
+      if (this.targetKey()) {
+        this.loadFolderInfo();
       }
     },
 
     /**
-     * @param {Number|String} folderId
+     * Returns the parameters identifying where an upload is bound for.
+     *
+     * The asset index sets a folderId. An Assets field's own upload button sets a fieldId
+     * instead, with an elementId when the element has been saved, and the server works the
+     * folder out from the field's upload location.
+     *
+     * @returns {Object|null}
+     */
+    targetParams: function () {
+      var data = this.formData || {};
+      if (data.folderId) {
+        return {folderId: data.folderId};
+      }
+      if (data.fieldId) {
+        var params = {fieldId: data.fieldId};
+        if (data.elementId) {
+          params.elementId = data.elementId;
+        }
+        if (data.siteId) {
+          params.siteId = data.siteId;
+        }
+        return params;
+      }
+      return null;
+    },
+
+    /**
+     * Returns a cache key for the current target, or null if there isn't one.
+     *
+     * @returns {String|null}
+     */
+    targetKey: function () {
+      var params = this.targetParams();
+      return params ? JSON.stringify(params) : null;
+    },
+
+    /**
      * @returns {Promise}
      */
-    loadFolderInfo: function (folderId) {
+    loadFolderInfo: function () {
       var self = this;
+      var params = this.targetParams();
+      var key = this.targetKey();
 
-      if (typeof this._folderInfoPromises[folderId] !== 'undefined') {
-        return this._folderInfoPromises[folderId];
+      if (!key) {
+        return Promise.resolve({stream: false});
+      }
+      if (typeof this._folderInfoPromises[key] !== 'undefined') {
+        return this._folderInfoPromises[key];
       }
 
-      this._folderInfoPromises[folderId] = Craft.sendActionRequest(
+      this._folderInfoPromises[key] = Craft.sendActionRequest(
         'GET',
         '_bunnymate/upload/folder-info',
-        {params: {folderId: folderId}}
+        {params: params}
       )
         .then(function (response) {
-          self._folderInfo[folderId] = response.data;
+          self._folderInfo[key] = response.data;
           return response.data;
         })
         .catch(function () {
-          // Treat an unknown folder as a regular one, so uploads still work
-          self._folderInfo[folderId] = {stream: false};
-          return self._folderInfo[folderId];
+          // Treat an unknown target as a regular one, so uploads still work
+          self._folderInfo[key] = {stream: false};
+          return self._folderInfo[key];
         });
 
-      return this._folderInfoPromises[folderId];
+      return this._folderInfoPromises[key];
     },
 
     /**
@@ -113,11 +154,11 @@
      * @returns {Boolean}
      */
     shouldStream: function (file) {
-      var folderId = this.formData ? this.formData.folderId : null;
-      if (!folderId) {
+      var key = this.targetKey();
+      if (!key) {
         return false;
       }
-      var info = this._folderInfo[folderId];
+      var info = this._folderInfo[key];
       // Not resolved yet: let Craft handle it. The file still reaches Bunny via the
       // server-side fetch fallback, just without bypassing PHP's upload limits.
       if (!info || !info.stream) {
@@ -154,6 +195,9 @@
       var self = this;
 
       this._inProgressCounter++;
+      // Craft's progress bar is shared with every other uploader on the page, so it only wears
+      // Bunny's colours while one of ours is actually running
+      Garnish.$bod.addClass('bunnymate-uploading');
       this.$element.trigger('fileuploadstart');
 
       // Held so a failure after this point can tidy up the asset and the empty video that
@@ -161,10 +205,7 @@
       var credentials = null;
 
       Craft.sendActionRequest('POST', '_bunnymate/upload/prepare', {
-        data: {
-          folderId: this.formData.folderId,
-          filename: file.name,
-        },
+        data: $.extend({filename: file.name}, this.targetParams()),
       })
         .then(function (response) {
           credentials = response.data;
@@ -302,6 +343,9 @@
 
     endUpload: function () {
       this._inProgressCounter = Math.max(0, this._inProgressCounter - 1);
+      if (this._inProgressCounter === 0) {
+        Garnish.$bod.removeClass('bunnymate-uploading');
+      }
       this.$element.trigger('fileuploadalways');
     },
 
@@ -315,6 +359,7 @@
     },
 
     destroy: function () {
+      Garnish.$bod.removeClass('bunnymate-uploading');
       for (var i = 0; i < this._streamUploads.length; i++) {
         try {
           this._streamUploads[i].abort();

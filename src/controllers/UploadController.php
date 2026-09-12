@@ -7,6 +7,8 @@ use craft\elements\Asset;
 use craft\helpers\Assets as AssetsHelper;
 use craft\helpers\Db;
 use craft\helpers\FileHelper;
+use craft\fields\Assets as AssetsField;
+use craft\models\VolumeFolder;
 use craft\web\Controller;
 
 use vaersaagod\bunnymate\BunnyMate;
@@ -49,15 +51,9 @@ class UploadController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $request = Craft::$app->getRequest();
-        $folderId = (int)$request->getRequiredBodyParam('folderId');
-        $filename = (string)$request->getRequiredBodyParam('filename');
+        $filename = (string)Craft::$app->getRequest()->getRequiredBodyParam('filename');
 
-        $folder = Craft::$app->getAssets()->getFolderById($folderId);
-        if (!$folder) {
-            throw new BadRequestHttpException("Invalid folder ID: $folderId");
-        }
-
+        $folder = $this->_resolveFolder();
         $volume = $folder->getVolume();
         $this->requirePermission("saveAssets:$volume->uid");
 
@@ -149,10 +145,13 @@ class UploadController extends Controller
         $this->requireCpRequest();
         $this->requireAcceptsJson();
 
-        $folderId = (int)Craft::$app->getRequest()->getRequiredParam('folderId');
-        $folder = Craft::$app->getAssets()->getFolderById($folderId);
+        try {
+            $folder = $this->_resolveFolder();
+        } catch (BadRequestHttpException $e) {
+            return $this->asJson(['stream' => false]);
+        }
 
-        if (!$folder || !$folder->volumeId) {
+        if (!$folder->volumeId) {
             return $this->asJson(['stream' => false]);
         }
 
@@ -278,6 +277,52 @@ class UploadController extends Controller
             // Not worth failing the upload over; the video itself is unaffected
             Craft::warning("Unable to write a placeholder for asset $asset->id: {$e->getMessage()}", __METHOD__);
         }
+    }
+
+    /**
+     * Resolves the folder an upload is bound for.
+     *
+     * The asset index passes a folderId. An Assets field's own upload button passes a fieldId,
+     * and an elementId when it has one, and the folder comes from the field's upload location,
+     * which can be a dynamic path. This mirrors what Craft's own upload action does with them.
+     *
+     * @return VolumeFolder
+     * @throws BadRequestHttpException if no usable destination was given
+     */
+    private function _resolveFolder(): VolumeFolder
+    {
+        $request = Craft::$app->getRequest();
+        $folderId = (int)$request->getParam('folderId') ?: null;
+        $fieldId = (int)$request->getParam('fieldId') ?: null;
+
+        if (!$folderId && !$fieldId) {
+            throw new BadRequestHttpException('No target destination provided for uploading');
+        }
+
+        if (!$folderId) {
+            $field = Craft::$app->getFields()->getFieldById($fieldId);
+            if (!$field instanceof AssetsField) {
+                throw new BadRequestHttpException('The field provided is not an Assets field');
+            }
+
+            $element = null;
+            if ($elementId = $request->getParam('elementId')) {
+                $element = Craft::$app->getElements()->getElementById(
+                    (int)$elementId,
+                    null,
+                    $request->getParam('siteId') ?: null,
+                );
+            }
+
+            $folderId = $field->resolveDynamicPathToFolderId($element);
+        }
+
+        $folder = $folderId ? Craft::$app->getAssets()->getFolderById((int)$folderId) : null;
+        if (!$folder) {
+            throw new BadRequestHttpException('The target destination provided for uploading is not valid');
+        }
+
+        return $folder;
     }
 
     /**
