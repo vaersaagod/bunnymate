@@ -22,7 +22,6 @@ use craft\helpers\UrlHelper;
 use craft\helpers\Queue;
 use craft\services\Assets;
 use craft\services\Fs;
-use craft\services\Utilities;
 use craft\web\UrlManager;
 use craft\web\View;
 
@@ -33,7 +32,6 @@ use vaersaagod\bunnymate\queue\jobs\UploadVideo;
 use vaersaagod\bunnymate\services\Purge;
 use vaersaagod\bunnymate\services\Stream;
 use vaersaagod\bunnymate\services\Videos;
-use vaersaagod\bunnymate\utilities\VideoUpload;
 use vaersaagod\bunnymate\web\assets\upload\UploadAsset;
 use vaersaagod\bunnymate\web\assets\videopanel\VideoPanelAsset;
 use vaersaagod\bunnymate\web\twig\BunnyMateExtension;
@@ -99,7 +97,6 @@ class BunnyMate extends Plugin
         $this->_registerWebhookRoute();
         $this->_registerAssetUrlOverride();
         $this->_registerAssetCleanup();
-        $this->_registerUtilities();
         $this->_registerVideoAutoUpload();
         $this->_registerStreamUploader();
         $this->_registerVideoPanel();
@@ -294,22 +291,6 @@ class BunnyMate extends Plugin
                     return;
                 }
                 $this->getVideos()->deleteVideoForAsset($asset);
-            }
-        );
-    }
-
-    /**
-     * Registers BunnyMate's CP utilities.
-     *
-     * @return void
-     */
-    private function _registerUtilities(): void
-    {
-        Event::on(
-            Utilities::class,
-            Utilities::EVENT_REGISTER_UTILITIES,
-            static function (RegisterComponentTypesEvent $event) {
-                $event->types[] = VideoUpload::class;
             }
         );
     }

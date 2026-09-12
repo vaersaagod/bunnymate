@@ -164,11 +164,9 @@ Videos uploaded to a mapped volume through the regular **Assets** screen go stra
 
 This works by registering a custom uploader with Craft, via `Craft.registerUploaderClass()`. Craft dispatches uploaders by filesystem class, so BunnyMate registers for every filesystem used by a mapped volume. Volumes that share that filesystem but aren't mapped to a library are unaffected, and non-video files are always handled by Craft's own uploader.
 
-The same uploader is available as a standalone **Bunny Video Upload** utility, which is useful for bulk uploads or when you'd rather not navigate the asset index.
-
 Craft handles two small requests per file: one to create the video and its asset and hand back a signed upload credential, and one to refresh metadata when the upload finishes. The library's API key never reaches the browser. The signature is `SHA256(libraryId + apiKey + expires + videoGuid)`, scoped to a single video and expiring on its own.
 
-Only volumes listed in `volumeVideoLibraries` appear in the utility, and only to users with `saveAssets` permission on them.
+Only volumes listed in `volumeVideoLibraries` upload this way, and only for users with `saveAssets` permission on them.
 
 #### Videos that arrive some other way
 

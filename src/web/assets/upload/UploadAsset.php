@@ -34,12 +34,7 @@ class UploadAsset extends AssetBundle
         // tus.min.js is deliberately not listed here. It's 86KB and most CP screens never
         // start an upload, so it's published alongside and pulled in on demand instead.
         $this->js = [
-            'bunnymate-upload.js',
             'bunnymate-stream-uploader.js',
-        ];
-
-        $this->css = [
-            'bunnymate-upload.css',
         ];
 
         parent::init();
