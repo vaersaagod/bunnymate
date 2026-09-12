@@ -116,8 +116,19 @@ class Settings extends Model
     public ?string $defaultMaxResolution = null;
 
     /**
-     * @var bool Whether rendered video tags should wait until they're scrolled into view
-     * before loading anything.
+     * @var bool Whether rendered video tags should hold their sources in `data-src` until
+     * scrolled into view.
+     *
+     * On by default. [[\vaersaagod\bunnymate\behaviors\VideoAssetBehavior::getBunnyVideoTag()]]
+     * renders a self-contained player, so nothing outside it is waiting to call `play()` and
+     * deferring the media is a straight win.
+     *
+     * Turn it off where something else drives playback: a lazyloaded tag has no `src` until
+     * the player script has run, so a component that plays the video itself will call `play()`
+     * on an empty element. That case is better served by building the element from
+     * [[\vaersaagod\bunnymate\models\BunnyVideo::getMp4Sources()]] than by this tag.
+     *
+     * This has nothing to do with hls.js, which is always attached on approach regardless.
      *
      * @since 2.1.0
      */

@@ -4,10 +4,20 @@
   var HLS_TYPE = 'application/x-mpegURL';
 
   /**
-   * Returns whether the browser can play HLS without help. Safari can; nothing else does.
+   * Returns whether hls.js can run here.
+   *
+   * `canPlayType` can't answer this: Chrome and Edge report "maybe" for HLS but can't actually
+   * decode it, so trusting them leaves Chromium with neither native playback nor hls.js. What
+   * hls.js needs is Media Source Extensions, so that's what's checked -- the same test
+   * `Hls.isSupported()` makes, done before spending a request on the library.
+   *
+   * Browsers without MSE are iOS WebKit, where HLS plays natively and hls.js would be useless
+   * anyway. Everywhere else, hls.js is preferred even where native HLS exists: it's the only
+   * path that behaves the same across browsers, and it's what the resolution bounds hang off.
    */
-  function playsHlsNatively(video) {
-    return video.canPlayType(HLS_TYPE) !== '';
+  function canUseHlsJs() {
+    var MediaSource = window.MediaSource || window.WebKitMediaSource;
+    return !!(MediaSource && typeof MediaSource.isTypeSupported === 'function');
   }
 
   function sourcesOf(video) {
@@ -146,26 +156,30 @@
     }
     video.bunnymateReady = true;
 
+    // Only a lazyloaded tag has sources to move. Calling load() on one that already has its
+    // src would reset the element, interrupting playback that may have started without us.
+    if (video.getAttribute('data-bunnymate-lazyload') !== null) {
+      activate(video);
+    }
+
+    // Where hls.js can't run, the markup already covers it: iOS WebKit plays the HLS source
+    // natively, and anything else falls through to the MP4
     var hlsJsUrl = video.getAttribute('data-bunnymate-hls');
-
-    activate(video);
-
-    // Safari plays the HLS source as it stands; everything else either gets hls.js or falls
-    // through to the MP4 source already in the markup
-    if (hlsJsUrl && !playsHlsNatively(video)) {
+    if (hlsJsUrl && canUseHlsJs()) {
       attachHls(video, hlsJsUrl);
     }
   }
 
+  /**
+   * Everything this script does is worth deferring until the video is near the viewport,
+   * lazyloaded or not: hls.js starts buffering the moment it attaches, so attaching it to an
+   * off-screen video just moves the download earlier. A video that's already in view
+   * intersects on the observer's first check, so nothing above the fold waits for this.
+   */
   function init() {
     var videos = document.querySelectorAll('video[data-bunnymate-video]');
 
     Array.prototype.forEach.call(videos, function (video) {
-      if (video.getAttribute('data-bunnymate-lazyload') === null) {
-        setUp(video);
-        return;
-      }
-
       if (typeof IntersectionObserver === 'undefined') {
         setUp(video);
         return;

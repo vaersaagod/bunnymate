@@ -61,7 +61,7 @@ class VideoAssetBehavior extends Behavior
      * - `inline`: autoplaying, muted, looping and playing inline, for use as a background
      * - `lazyload`: hold off loading until scrolled into view, defaulting to the setting
      * - `controls`, `muted`, `autoplay`, `loop`, `playsinline`: set individually
-     * - `poster`: false to omit the poster frame, or a URL to override it
+     * - `poster`: true for Bunny's poster frame, or a URL to use instead. Off by default.
      * - `hls`: false to drop HLS altogether and play an MP4 rendition instead
      * - `minResolution` / `maxResolution`: bounds for adaptive playback, e.g. `'720p'`, which
      *   only mean anything while `hls` is on

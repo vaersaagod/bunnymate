@@ -918,8 +918,11 @@ class BunnyMate extends Plugin
         $useHls = (bool)($options['hls'] ?? true);
         $loadHlsJs = $useHls && !empty($settings->hlsJsUrl);
 
-        $poster = $options['poster'] ?? null;
-        if ($poster === null) {
+        // Off by default: a poster is a whole extra image request, and templates that want one
+        // usually want it transformed or lazyloaded, which is theirs to do. `true` opts into
+        // Bunny's frame as-is; a string uses that URL.
+        $poster = $options['poster'] ?? false;
+        if ($poster === true) {
             $poster = $video->getThumbnailUrl();
         }
 

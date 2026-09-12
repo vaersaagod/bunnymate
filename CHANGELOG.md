@@ -30,8 +30,10 @@
 - Added `asset.bunnyVideo.originalUrl` and `hasOriginal`, for the uploaded file itself where the library keeps originals.
 - Added `asset.bunnyVideo.downloadUrl`, which serves the original as a download under its original filename, and the `allowOriginalDownloads` setting governing it on the front end. The asset edit screen uses it.
 - Added `asset.bunnyVideo.statusLabel`, which reports a video's state from its encoding progress rather than Bunny's status code.
-- Added `asset.getBunnyVideoTag()`, which renders a `<video>` element with an HLS source and an MP4 fallback, a poster frame and an aspect ratio. Lazyloading and hls.js are opt-out, and neither loads any JavaScript unless the tag needs it.
+- Added `asset.getBunnyVideoTag()`, which renders a `<video>` element with an HLS source, an MP4 fallback and an aspect ratio. A poster frame is opt-in with `poster: true`. Lazyloading and hls.js are opt-out, and neither loads any JavaScript unless the tag needs it.
 - Added the `hlsJsUrl`, `lazyloadBunnyVideo`, `defaultMinResolution` and `defaultMaxResolution` settings, governing the rendered player.
+- `lazyload` now governs only whether the sources are held in `data-src`. hls.js is attached as the video approaches the viewport regardless, rather than on page load when the tag isn't lazyloaded.
+- hls.js is now used wherever it can run, rather than only where the browser reports no native HLS support. Chrome and Edge report `"maybe"` for HLS but can't decode it, so they previously got neither native playback nor hls.js, and fell back to the capped MP4 rendition.
 - Added `asset.bunnyVideo.mp4Sources()`, which returns MP4 URLs for a player that manages the `src` itself — a video-loop component that plays on intersection and swaps rendition on a media query. Takes a map of media query to resolution.
 - Added a `bunnyVideo()` parameter to asset queries, so `craft.assets.bunnyVideo('ready').all()` returns Bunny Stream videos without fetching every asset and filtering in Twig. Takes `true`, `false`, `'ready'`, `'encoding'`, `'failed'`, `'missing'`, or specific statuses.
 

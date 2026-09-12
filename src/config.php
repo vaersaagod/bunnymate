@@ -54,7 +54,11 @@ return [
     'defaultMinResolution' => null,
     'defaultMaxResolution' => null,
 
-    // Whether rendered video tags wait until scrolled into view before loading
+    // Whether rendered video tags hold their sources in `data-src` until scrolled into view.
+    // On by default: getBunnyVideoTag() renders a self-contained player, so nothing outside it
+    // is waiting to call play(). Turn it off where something else drives playback — though
+    // that case is better served by building the element from mp4Sources().
+    // Unrelated to hls.js, which is always attached on approach.
     'lazyloadBunnyVideo' => true,
 
     // Whether original files can be downloaded from the front end. Originals aren't capped the

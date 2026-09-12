@@ -179,7 +179,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 {{ asset.getBunnyVideoTag() }}
 ```
 
-What comes out is a plain `<video>` with two sources — the HLS playlist and an MP4 rendition — a poster frame, and an `aspect-ratio` style so the page doesn't jump once metadata arrives. Safari plays the HLS natively and everything else falls back to the MP4, with no JavaScript involved at all. Where `hlsJsUrl` is set, a small script upgrades the rest to adaptive playback; it's only registered when the tag actually needs it.
+What comes out is a plain `<video>` with two sources — the HLS playlist and an MP4 rendition — and an `aspect-ratio` style so the page doesn't jump once metadata arrives. There's no poster unless you ask for one with `poster: true`, since a poster is a whole extra image request and templates that want one usually want it transformed. With JavaScript off, or blocked, iOS plays the HLS source natively and everything else falls back to the MP4 — the tag degrades on its own. Where `hlsJsUrl` is set, a small script attaches hls.js as the video approaches the viewport, giving adaptive playback everywhere hls.js can run. It's only registered when the tag actually needs it.
 
 ```twig
 {# A muted background loop: MP4 only, because for a silent loop a fixed rendition
@@ -191,10 +191,10 @@ What comes out is a plain `<video>` with two sources — the HLS playlist and an
 | --- | --- | --- |
 | `inline` | `false` | Sets `autoplay`, `muted`, `loop` and drops `controls`, for a background loop |
 | `hls` | `true` | Set to false to emit only the MP4 source, and skip the player script |
-| `lazyload` | `lazyloadBunnyVideo` | Holds the sources in `data-src` until the element scrolls into view |
+| `lazyload` | `lazyloadBunnyVideo` (`true`) | Holds the sources in `data-src` until the element scrolls into view. See [Lazyloading](#lazyloading). |
 | `resolution` | `videoUrlRendition` | Which MP4 rendition to use as the fallback source |
 | `minResolution` / `maxResolution` | `defaultMinResolution` / `defaultMaxResolution` | Bounds on the levels hls.js may pick. Adaptive playback only, so they do nothing when `hls` is false. |
-| `poster` | The video's thumbnail | A URL, or false for none |
+| `poster` | `false` | `true` for Bunny's poster frame, or a URL to use instead |
 | `controls`, `playsinline`, `preload`, `autoplay`, `muted`, `loop` | — | Passed through to the element |
 | `attributes` | — | Merged over everything above |
 | `nonce` | — | Applied to the player script tag, for a strict CSP |
@@ -204,6 +204,14 @@ The return value is `Markup`, so Craft's `|attr` filter can add to it after the 
 ```twig
 {{ asset.getBunnyVideoTag({ inline: true })|attr({ class: 'teaser__video' }) }}
 ```
+
+#### Lazyloading
+
+`lazyload` governs one thing: whether the `<source>` elements render with `src` or `data-src`. It's **on** by default, because this tag renders a self-contained player — nothing outside it is waiting to play the video, so deferring the media until it's needed is a straight win.
+
+hls.js is a separate matter, and is attached as the video approaches the viewport whether or not the tag is lazyloaded. It starts buffering the moment it attaches, so attaching it to an off-screen video would only move the download earlier. Nothing above the fold waits for this: an element already in view intersects on the observer's first check.
+
+Turn `lazyload` off only if you need the element to work before any JavaScript has run. If you're turning it off because your own code calls `play()`, that's the wrong tool — see [Driving playback yourself](#driving-playback-yourself).
 
 ### Driving playback yourself
 
@@ -237,6 +245,7 @@ Preconnecting to the library's hostname is worth it, since the first request is 
 ```
 
 MP4 renditions stop at 1080p — that's Bunny's MP4 fallback, not a BunnyMate limit. Where a loop has to fill a large viewport, `hlsUrl` carries the full ladder up to the source resolution, at the cost of needing a player.
+
 ### Querying
 
 Asset queries take a `bunnyVideo()` parameter, so finding video assets doesn't mean fetching everything and filtering in Twig:
