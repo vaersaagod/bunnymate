@@ -23,6 +23,10 @@
       return Craft.BunnyMate._tusPromise;
     }
     Craft.BunnyMate._tusPromise = new Promise(function (resolve, reject) {
+      if (!Craft.BunnyMate.tusUrl) {
+        Craft.BunnyMate._tusPromise = null;
+        return Promise.reject(new Error('The upload client couldn’t be located.'));
+      }
       var script = document.createElement('script');
       script.src = Craft.BunnyMate.tusUrl;
       script.onload = resolve;
@@ -152,6 +156,10 @@
       this._inProgressCounter++;
       this.$element.trigger('fileuploadstart');
 
+      // Held so a failure after this point can tidy up the asset and the empty video that
+      // preparing already created
+      var credentials = null;
+
       Craft.sendActionRequest('POST', '_bunnymate/upload/prepare', {
         data: {
           folderId: this.formData.folderId,
@@ -159,14 +167,24 @@
         },
       })
         .then(function (response) {
-          return Craft.BunnyMate.loadTus().then(function () {
-            self.startTusUpload(file, response.data);
-          });
+          credentials = response.data;
+          return Craft.BunnyMate.loadTus();
+        })
+        .then(function () {
+          self.startTusUpload(file, credentials);
         })
         .catch(function (error) {
+          // Without this, anything failing between preparing and the first byte leaves an
+          // asset behind pointing at a Bunny video that never received anything
+          if (credentials) {
+            self.abortUpload(credentials.assetId);
+          }
+          // eslint-disable-next-line no-console
+          console.error('[BunnyMate] upload failed', error);
           self.failUpload(
             file,
             (error.response && error.response.data && error.response.data.message) ||
+              (error && error.message) ||
               Craft.t('_bunnymate', 'Couldn’t start the upload.')
           );
         });
@@ -192,12 +210,16 @@
           filetype: file.type,
           title: credentials.filename,
         },
+        // Don't leave fingerprints behind for uploads that finished
+        removeFingerprintOnSuccess: true,
         onProgress: function (bytesUploaded, bytesTotal) {
           // Craft's index reads loaded/total off the progress event
-          self.$element.trigger('fileuploadprogressall', {
-            loaded: bytesUploaded,
-            total: bytesTotal,
-          });
+          self.$element.trigger('fileuploadprogressall', [
+            {
+              loaded: bytesUploaded,
+              total: bytesTotal,
+            },
+          ]);
         },
         onSuccess: function () {
           self.finishUpload(credentials);
@@ -210,12 +232,12 @@
 
       this._streamUploads.push(upload);
 
-      upload.findPreviousUploads().then(function (previous) {
-        if (previous.length) {
-          upload.resumeFromPreviousUpload(previous[0]);
-        }
-        upload.start();
-      });
+      // Deliberately not resuming a previous upload. tus-js-client fingerprints a file by its
+      // name, size and date, so uploading the same file again finds the URL from last time,
+      // and every prepare creates a new Bunny video, so that URL belongs to a different one.
+      // Resuming would either target the wrong video or, once the old upload has expired, HEAD
+      // a dead URL and fail. Retries within this upload are handled by retryDelays.
+      upload.start();
     },
 
     /**
@@ -231,16 +253,18 @@
           // The bytes are on Bunny either way; the webhook will catch the status up
         })
         .then(function () {
-          // Craft's index reads the result off a CustomEvent's detail
-          self.$element[0].dispatchEvent(
-            new CustomEvent('fileuploaddone', {
-              bubbles: true,
-              detail: {
+          // Triggered through jQuery, not as a native CustomEvent. Craft's handler takes the
+          // detail off a CustomEvent or `result` off the data argument, and a native event
+          // reaches its jQuery listener wrapped in a jQuery.Event, so the CustomEvent branch
+          // is never the one that runs and it reads `result` off an argument that isn't there.
+          self.$element.trigger('fileuploaddone', [
+            {
+              result: {
                 assetId: credentials.assetId,
                 filename: credentials.filename,
               },
-            })
-          );
+            },
+          ]);
           self.endUpload();
         });
     },
@@ -251,7 +275,14 @@
      */
     failUpload: function (file, message) {
       Craft.cp.displayError(message);
-      this.$element.trigger('fileuploadfail');
+      // Craft's handler calls response() on the data argument, so it has to be there
+      this.$element.trigger('fileuploadfail', [
+        {
+          response: function () {
+            return null;
+          },
+        },
+      ]);
       this.endUpload();
     },
 
