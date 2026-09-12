@@ -194,7 +194,7 @@ Imager downloads over curl, which sends no referrer, and Bunny libraries block r
 
 Without Imager, the poster frame is used as Bunny serves it. If you have Bunny Optimizer enabled on the pull zone, set `optimizerEnabled` to `true` on the library config and BunnyMate will ask Bunny for the size Craft wanted.
 
-Video thumbnails are also marked with a play icon, since a poster frame is a still image and would otherwise be indistinguishable from a photo in an asset index. Videos with no Bunny video are left alone, since they already show a file-type icon.
+Video thumbnails are also marked with a play icon, since a poster frame is a still image and would otherwise be indistinguishable from a photo in an asset index. A video that's still encoding has no usable poster yet, so it gets a plain placeholder with a spinner over it rather than a file-type icon that gives no sign anything is happening. Videos with no Bunny video are left alone.
 
 Previewing a video asset in the control panel opens Bunny's player, rather than Craft's default `<video>` element, which can't play an HLS playlist in most browsers.
 

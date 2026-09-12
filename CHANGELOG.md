@@ -18,6 +18,7 @@
 - Replacing a video asset's file now replaces its Bunny Stream video.
 - Video assets now use Bunny's poster frame as their control panel thumbnail, rather than a generic file-type icon.
 - Video thumbnails are now marked with a play icon, so they're distinguishable from images at a glance.
+- Videos that are still encoding now show a placeholder thumbnail with a spinner, instead of a generic file-type icon.
 - Control panel thumbnails are now resized with Imager X where it's installed, so a 4K poster frame becomes a ~3KB thumbnail instead of a 150KB one. Added the `transformThumbnails` setting.
 - Added the per-library `optimizerEnabled` setting, which lets control panel thumbnails be requested at the size Craft asked for when Bunny Optimizer is enabled on the pull zone.
 - An empty placeholder file is now written for videos uploaded straight to Bunny, so Craft's asset indexer doesn't list them as missing and offer to delete them. Added the `writePlaceholderFiles` setting.

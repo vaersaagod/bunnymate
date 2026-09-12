@@ -36,6 +36,7 @@ use vaersaagod\bunnymate\queue\jobs\UploadVideo;
 use vaersaagod\bunnymate\services\Purge;
 use vaersaagod\bunnymate\services\Stream;
 use vaersaagod\bunnymate\services\Videos;
+use vaersaagod\bunnymate\web\assets\thumb\ThumbAsset;
 use vaersaagod\bunnymate\web\assets\upload\UploadAsset;
 use vaersaagod\bunnymate\web\assets\videopanel\VideoPanelAsset;
 use vaersaagod\bunnymate\web\twig\BunnyMateExtension;
@@ -567,7 +568,17 @@ class BunnyMate extends Plugin
                     return;
                 }
                 $video = $this->getVideos()->getVideoForAsset($asset);
-                if (!$video || !$video->getIsReady()) {
+                if (!$video) {
+                    return;
+                }
+                if (!$video->getIsReady()) {
+                    // Bunny has no usable poster frame yet, and the generic file icon gives no
+                    // hint that anything is still happening
+                    try {
+                        $event->url = ThumbAsset::processingUrl();
+                    } catch (\Throwable $e) {
+                        Craft::error($e->getMessage(), __METHOD__);
+                    }
                     return;
                 }
                 try {
@@ -657,9 +668,9 @@ class BunnyMate extends Plugin
      * Marks video thumbnails in the control panel with a small "VIDEO" badge.
      *
      * Bunny's poster frame is a still image, so without this a video is indistinguishable from
-     * a photo in an asset index. Large thumbnails get a "VIDEO" label; small chips, where that
-     * wouldn't fit, get a play icon instead. Videos with no Bunny video already show a
-     * file-type icon, which is obvious enough on its own, so they're left alone.
+     * a photo in an asset index. Videos still encoding get a spinner instead of the play icon,
+     * over the placeholder their thumbnail falls back to. Videos with no Bunny video already
+     * show a file-type icon, which is obvious enough on its own, so they're left alone.
      *
      * @return void
      */
@@ -689,13 +700,18 @@ class BunnyMate extends Plugin
             return $html;
         }
 
-        if (!$this->getVideos()->getVideoForAsset($element)?->getIsReady()) {
+        $video = $this->getVideos()->getVideoForAsset($element);
+        if (!$video) {
             return $html;
         }
 
+        $class = $video->getIsReady()
+            ? 'bunnymate-video-thumb'
+            : 'bunnymate-video-thumb bunnymate-video-thumb--processing';
+
         $marked = str_replace(
             '<div class="thumb"',
-            '<div class="thumb bunnymate-video-thumb"',
+            sprintf('<div class="thumb %s"', $class),
             $html,
         );
 
@@ -745,6 +761,26 @@ class BunnyMate extends Plugin
             .chip.small > .thumb.bunnymate-video-thumb::after {
                 width: 14px;
                 height: 14px;
+            }
+
+            /* Still encoding: a spinner rather than a play control that wouldn't work */
+            .thumb.bunnymate-video-thumb--processing::after {
+                background-image: none;
+                border: 2px solid rgba(255, 255, 255, 0.35);
+                border-block-start-color: #fff;
+                border-radius: 50%;
+                box-sizing: border-box;
+                animation: bunnymate-spin 0.8s linear infinite;
+            }
+
+            @keyframes bunnymate-spin {
+                to { transform: translate(-50%, -50%) rotate(360deg); }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .thumb.bunnymate-video-thumb--processing::after {
+                    animation: none;
+                }
             }
             CSS;
     }

@@ -28,14 +28,17 @@ return [
         //    'optimizerEnabled' => false,
         //],
     ],
-    // Maps volume handles to video library handles. Volumes that aren't listed are left alone.
+    // Maps volume handles to video library handles, and is what turns Bunny Stream on: a
+    // volume that isn't listed is left alone entirely. Videos uploaded to a mapped volume go
+    // straight from the browser to Bunny, whatever filesystem the volume uses.
     'volumeVideoLibraries' => [
         //'videos' => 'default',
     ],
 
-    // Whether videos uploaded to a mapped volume any way other than the Bunny Video Upload
-    // utility should be sent to Bunny Stream automatically. Bunny pulls the file from the
-    // asset's URL, so the volume must be reachable from the public internet.
+    // Whether videos that reach a mapped volume without going through the uploader (an import,
+    // a programmatic save, or the uploader falling back) should be sent to Bunny Stream
+    // automatically. Bunny pulls the file from the asset's URL, so this path only works for
+    // volumes reachable from the public internet.
     'autoUploadVideos' => true,
 
     // Whether to write an empty placeholder file for videos uploaded straight to Bunny, so
