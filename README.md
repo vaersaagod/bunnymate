@@ -146,7 +146,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | --- | --- |
 | `isReady` / `isFailed` | Whether the video is playable, or failed to encode |
 | `status` | The raw `VideoStatus` enum case from Bunny |
-| `statusLabel` | A readable state: `Playable` while the video plays but is still encoding, `Ready` once encoding finishes. Bunny's own status settles on "one resolution finished" even when a video is complete, so progress is what's reported rather than the status code. |
+| `statusLabel` | A readable state, derived from encoding progress. See [Video status](#video-status). |
 | `hlsUrl` | HLS playlist. Null until playable. |
 | `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given, and an unavailable one falls back to the closest below it. |
 | `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |
@@ -154,6 +154,68 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `embedUrl(params)` | Bunny's iframe player URL |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
 | `availableResolutions` | Every rendition Bunny encoded, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
+
+### Video status
+
+Bunny reports a video's state as a numeric status, sent on the webhook and returned by the API. BunnyMate maps these onto the `VideoStatus` enum, available as `asset.bunnyVideo.status`:
+
+| Code | Case | Meaning |
+| --- | --- | --- |
+| 0 | `Queued` | Waiting to be encoded |
+| 1 | `Processing` | Working out preview and format details |
+| 2 | `Encoding` | Encoding |
+| 3 | `Finished` | Encoding complete, every rendition available |
+| 4 | `ResolutionFinished` | One rendition available, so the video plays while encoding continues |
+| 5 | `Failed` | Encoding failed |
+| 6 | `PresignedUploadStarted` | A TUS upload began |
+| 7 | `PresignedUploadFinished` | A TUS upload completed |
+| 8 | `PresignedUploadFailed` | A TUS upload failed |
+| 9 | `CaptionsGenerated` | Automatic captions finished |
+| 10 | `TitleOrDescriptionGenerated` | Automatic title or description finished |
+
+Three things about these are worth knowing, because none of them are obvious from the numbers.
+
+**9 and 10 arrive after a video is finished.** They report generated metadata, not encoding progress, so treating them as lifecycle states would move a finished video backwards. `VideoStatus::isLifecycle()` marks them as not-lifecycle, and BunnyMate refreshes a video's metadata on those webhooks without touching its status.
+
+**Bunny's status settles on 4, not 3.** A fully encoded video with every rendition still reports `ResolutionFinished` from the API. `Finished` only ever arrives as a passing webhook, so whether a video ends up stored as 3 or 4 is a matter of which webhook landed last. Both mean the video plays.
+
+**So use `statusLabel`, not `status`, for display.** It reports encoding progress once a video is playable, which is stable where the status code isn't:
+
+| Status | `encodeProgress` | `statusLabel` | `isReady` |
+| --- | --- | --- | --- |
+| `Queued` | 0% | Queued | `false` |
+| `Encoding` | 45% | Encoding | `false` |
+| `ResolutionFinished` | 60% | Playable | `true` |
+| `ResolutionFinished` | 100% | Ready | `true` |
+| `Finished` | 100% | Ready | `true` |
+| `Failed` | — | Failed | `false` |
+
+`isReady` is true for 3 and 4, since either means the video plays, and also for 9 and 10, which can only arrive once encoding has finished. `isFailed` covers 5 and 8. In templates:
+
+```twig
+{% if video.isReady %}
+    {# plays, though it may still be encoding higher renditions #}
+{% elseif video.isFailed %}
+    {# 5 or 8 #}
+{% else %}
+    {{ video.statusLabel }} ({{ video.encodeProgress }}%)
+{% endif %}
+```
+
+### Renditions
+
+Bunny only encodes up to the source resolution, so renditions are per video: a 720p upload never has a 1080p rendition, and two videos in the same library can offer different sets. `availableResolutions` is what Bunny actually produced, ascending.
+
+`mp4Url()` and `videoUrlRendition` both consult that list, so neither ever returns a URL that 404s. A rendition that wasn't produced falls back to the closest one below it, or to the lowest available if the request was below everything on offer:
+
+| Available | Asked for | Returns |
+| --- | --- | --- |
+| `240p,360p,480p,720p,1080p` | — | `1080p` |
+| `240p,360p,480p,720p,1080p` | `720p` | `720p` |
+| `240p,360p,720p` | `1080p` | `720p` |
+| `720p,1080p` | `240p` | `720p` |
+
+`mp4Url()` returns null only when a video has no MP4 renditions at all, which means MP4 fallback is off for the library.
 
 ### Asset URLs
 
