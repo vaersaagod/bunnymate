@@ -309,17 +309,10 @@ The cost is that anything reading the asset's own file gets an empty one. Playba
 
 ### Known limitations
 
-Deleting an asset outright removes its Bunny video. Moving one to the trash deliberately doesn't, since a trashed asset can be restored and a deleted video couldn't be.
+Deleting an asset outright removes its Bunny video. Moving one to the trash deliberately doesn't, since a trashed asset can be restored and a deleted video couldn't be: the video stays until the asset is either restored or purged for good.
 
-That leaves a gap: when Craft's garbage collection eventually purges the trash, it deletes elements with raw SQL and fires no element events, so nothing gets the chance to tell Bunny. `Gc::run()` hard-deletes at the start and only fires `EVENT_RUN` afterwards, by which point the rows that held the video IDs have already cascaded away, so there's nothing to hook.
+When Craft's garbage collection eventually purges it, the video is deleted too. That needs a little care, because GC deletes elements with raw SQL and fires no element events, and `Gc::run()` hard-deletes before it fires `EVENT_RUN`. So the videos table's foreign key is `ON DELETE SET NULL` rather than a cascade: purging an asset leaves the row behind with its video ID intact and a null `assetId`, which is an unambiguous marker that the video outlived its asset. BunnyMate clears those on `Gc::EVENT_RUN`, which runs immediately afterwards.
 
-Use the prune command to clear up afterwards. It lists videos in a library that no longer belong to a Craft asset, and deletes nothing without `--delete`:
-
-```
-php craft _bunnymate/stream/prune <library>
-php craft _bunnymate/stream/prune <library> --delete
-```
-
-Note that this reports any video without a Craft asset, including ones uploaded through Bunny's own dashboard, so read the list before deleting. Videos belonging to trashed assets are left alone, since those assets can still be restored.
+That distinction matters. A null row is definitely a purged asset's video, never a video someone uploaded through Bunny's dashboard, so nothing has to guess and nothing needs scheduling. A video that fails to delete keeps its row and is retried on the next run.
 
 If the uploader can't confirm in time that a folder is set up for Bunny Stream, it lets Craft handle the upload normally. The video still reaches Bunny via the fetch fallback, just without bypassing PHP's upload limits.

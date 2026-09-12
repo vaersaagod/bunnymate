@@ -27,7 +27,7 @@
 - Added a Bunny Stream panel to asset edit screens, showing encoding status and metadata, with a button to refresh it from Bunny when the webhook hasn't landed.
 - Added `asset.bunnyVideo.statusLabel`, which reports a video's state from its encoding progress rather than Bunny's status code.
 
-- Added the `stream/prune` console command, which lists (and optionally deletes) videos in a library that no longer belong to a Craft asset.
+- Bunny videos are now deleted when Craft's garbage collection purges their trashed asset.
 
 ### Changed
 - BunnyMate now requires PHP 8.3 or later.

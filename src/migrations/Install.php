@@ -52,7 +52,11 @@ class Install extends Migration
         if (!$this->db->tableExists(Table::VIDEOS)) {
             $this->createTable(Table::VIDEOS, [
                 'id' => $this->primaryKey(),
-                'assetId' => $this->integer()->notNull(),
+                // Nullable on purpose: when Craft's garbage collection purges a trashed
+                // asset it deletes elements with raw SQL and fires no events, so a cascade
+                // would take the video's ID with it and leave the video stranded on Bunny.
+                // Setting it null instead keeps the ID around to clean up from.
+                'assetId' => $this->integer(),
                 'library' => $this->string()->notNull(),
                 'videoGuid' => $this->uid()->notNull(),
                 'status' => $this->integer()->notNull()->defaultValue(0),
@@ -68,7 +72,7 @@ class Install extends Migration
         $this->createIndexIfMissing(Table::VIDEOS, ['library']);
 
         if (!Db::findForeignKey(Table::VIDEOS, 'assetId')) {
-            $this->addForeignKey(null, Table::VIDEOS, ['assetId'], CraftTable::ASSETS, ['id'], 'CASCADE', null);
+            $this->addForeignKey(null, Table::VIDEOS, ['assetId'], CraftTable::ASSETS, ['id'], 'SET NULL', null);
         }
     }
 

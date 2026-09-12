@@ -172,6 +172,46 @@ class Videos extends Component
         return true;
     }
 
+    /**
+     * Deletes videos whose Craft asset has been purged.
+     *
+     * Trashing an asset leaves its video alone, since the asset can be restored. When garbage
+     * collection later purges it for good, the foreign key nulls the row's assetId rather than
+     * removing it, so the video's ID survives to be cleaned up here.
+     *
+     * A video that fails to delete keeps its row, so the next run tries again.
+     *
+     * @return int How many videos were deleted
+     */
+    public function deleteOrphanedVideos(): int
+    {
+        $records = VideoRecord::findAll(['assetId' => null]);
+        if (empty($records)) {
+            return 0;
+        }
+
+        $stream = BunnyMate::getInstance()->getStream();
+        $deleted = 0;
+
+        foreach ($records as $record) {
+            try {
+                $library = $stream->getLibrary($record->library);
+            } catch (InvalidConfigException $e) {
+                Craft::error("Unable to delete orphaned video \"$record->videoGuid\": {$e->getMessage()}", __METHOD__);
+                continue;
+            }
+            if (!$stream->deleteVideo($library, $record->videoGuid)) {
+                // Leave the row so the next run picks it up again
+                continue;
+            }
+            $record->delete();
+            $deleted++;
+            Craft::info("Deleted orphaned video \"$record->videoGuid\"", __METHOD__);
+        }
+
+        return $deleted;
+    }
+
     // Private Methods
     // =========================================================================
 

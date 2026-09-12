@@ -25,6 +25,7 @@ use craft\helpers\UrlHelper;
 use craft\helpers\Queue;
 use craft\services\Assets;
 use craft\services\Fs;
+use craft\services\Gc;
 use craft\web\UrlManager;
 use craft\web\View;
 
@@ -62,7 +63,7 @@ class BunnyMate extends Plugin
     // =========================================================================
 
     /** @var string */
-    public string $schemaVersion = '1.1.0';
+    public string $schemaVersion = '1.2.0';
 
     /** @var bool */
     public bool $hasCpSettings = false;
@@ -108,6 +109,7 @@ class BunnyMate extends Plugin
         $this->_registerVideoThumbs();
         $this->_registerVideoThumbBadge();
         $this->_registerVideoPreview();
+        $this->_registerGarbageCollection();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -839,6 +841,29 @@ class BunnyMate extends Plugin
                     return;
                 }
                 $event->previewHandler = new BunnyVideoPreview($asset);
+            }
+        );
+    }
+
+    /**
+     * Cleans up Bunny videos whose assets have been purged.
+     *
+     * Craft's garbage collection hard-deletes elements before it fires this event, so by the
+     * time it runs the foreign key has already nulled the assetId on any affected row, which
+     * is exactly what marks a video as having outlived its asset.
+     *
+     * @return void
+     */
+    private function _registerGarbageCollection(): void
+    {
+        Event::on(
+            Gc::class,
+            Gc::EVENT_RUN,
+            function () {
+                $deleted = $this->getVideos()->deleteOrphanedVideos();
+                if ($deleted > 0) {
+                    Craft::info("Deleted $deleted orphaned Bunny Stream video(s)", __METHOD__);
+                }
             }
         );
     }

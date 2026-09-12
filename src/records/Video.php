@@ -13,7 +13,7 @@ use yii\db\ActiveQueryInterface;
  * Bunny Stream video record.
  *
  * @property int $id
- * @property int $assetId
+ * @property int|null $assetId
  * @property string $library
  * @property string $videoGuid
  * @property int $status
