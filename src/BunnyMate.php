@@ -654,8 +654,9 @@ class BunnyMate extends Plugin
      * Marks video thumbnails in the control panel with a small "VIDEO" badge.
      *
      * Bunny's poster frame is a still image, so without this a video is indistinguishable from
-     * a photo in an asset index. Videos with no Bunny video already show a file-type icon,
-     * which is obvious enough on its own, so they're left alone.
+     * a photo in an asset index. Large thumbnails get a "VIDEO" label; small chips, where that
+     * wouldn't fit, get a play icon instead. Videos with no Bunny video already show a
+     * file-type icon, which is obvious enough on its own, so they're left alone.
      *
      * @return void
      */
@@ -685,11 +686,6 @@ class BunnyMate extends Plugin
             return $html;
         }
 
-        // The badge doesn't fit on a small chip's thumbnail
-        if (preg_match('/\bclass="chip small\b/', $html)) {
-            return $html;
-        }
-
         if (!$this->getVideos()->getVideoForAsset($element)?->getIsReady()) {
             return $html;
         }
@@ -713,10 +709,15 @@ class BunnyMate extends Plugin
     /**
      * Returns the CSS for the video thumbnail badge.
      *
+     * Chips carry their own size class, so one marker class on the thumbnail can render as a
+     * label or an icon depending on where it ends up.
+     *
      * @return string
      */
     private function _videoThumbBadgeCss(): string
     {
+        $playIcon = $this->_playIconDataUri();
+
         return <<<CSS
             .thumb.bunnymate-video-thumb::after {
                 content: "VIDEO";
@@ -734,7 +735,38 @@ class BunnyMate extends Plugin
                 border-radius: var(--small-border-radius);
                 pointer-events: none;
             }
+
+            /* A 30px chip has no room for a word */
+            .chip.small > .thumb.bunnymate-video-thumb::after {
+                content: "";
+                width: 14px;
+                height: 14px;
+                padding: 0;
+                border-radius: 0;
+                background-color: transparent;
+                background-image: url("$playIcon");
+                background-repeat: no-repeat;
+                background-size: contain;
+            }
             CSS;
+    }
+
+    /**
+     * Returns a play icon as an SVG data URI.
+     *
+     * Inlined rather than published as an asset: it's one small shape, and this keeps the
+     * badge working without an asset bundle of its own.
+     *
+     * @return string
+     */
+    private function _playIconDataUri(): string
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
+            . '<circle cx="8" cy="8" r="8" fill="rgba(0,0,0,0.65)"/>'
+            . '<path d="M6.2 4.6 11.6 8l-5.4 3.4z" fill="#ffffff"/>'
+            . '</svg>';
+
+        return 'data:image/svg+xml;charset=utf-8,' . rawurlencode($svg);
     }
 
 }

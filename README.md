@@ -194,7 +194,7 @@ Imager downloads over curl, which sends no referrer, and Bunny libraries block r
 
 Without Imager, the poster frame is used as Bunny serves it. If you have Bunny Optimizer enabled on the pull zone, set `optimizerEnabled` to `true` on the library config and BunnyMate will ask Bunny for the size Craft wanted.
 
-Video thumbnails also carry a small **VIDEO** badge, since a poster frame is a still image and would otherwise be indistinguishable from a photo in an asset index. It's left off small chips, where it wouldn't fit, and off videos with no Bunny video, which already show a file-type icon.
+Video thumbnails are also marked, since a poster frame is a still image and would otherwise be indistinguishable from a photo in an asset index. Large thumbnails get a **VIDEO** label; small chips, where that wouldn't fit, get a play icon. Videos with no Bunny video are left alone, since they already show a file-type icon.
 
 ### Non-video files
 
