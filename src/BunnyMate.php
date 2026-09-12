@@ -709,8 +709,8 @@ class BunnyMate extends Plugin
     /**
      * Returns the CSS for the video thumbnail badge.
      *
-     * Chips carry their own size class, so one marker class on the thumbnail can render as a
-     * label or an icon depending on where it ends up.
+     * Chips carry their own size class, so one marker class on the thumbnail can be sized for
+     * where it ends up: 28px over a 120px large chip or card, 14px over a 30px small chip.
      *
      * @return string
      */
@@ -720,33 +720,28 @@ class BunnyMate extends Plugin
 
         return <<<CSS
             .thumb.bunnymate-video-thumb::after {
-                content: "VIDEO";
+                content: "";
+                /* Card thumbnails aren't positioned, unlike chip thumbnails */
                 position: absolute;
                 inset-block-start: 50%;
                 inset-inline-start: 50%;
                 transform: translate(-50%, -50%);
-                background-color: rgba(0, 0, 0, 0.65);
-                color: #fff;
-                font-size: 9px;
-                font-weight: 700;
-                letter-spacing: 0.05em;
-                line-height: 1.7;
-                padding-inline: 4px;
-                border-radius: var(--small-border-radius);
-                pointer-events: none;
-            }
-
-            /* A 30px chip has no room for a word */
-            .chip.small > .thumb.bunnymate-video-thumb::after {
-                content: "";
-                width: 14px;
-                height: 14px;
-                padding: 0;
-                border-radius: 0;
-                background-color: transparent;
+                width: 28px;
+                height: 28px;
                 background-image: url("$playIcon");
                 background-repeat: no-repeat;
                 background-size: contain;
+                pointer-events: none;
+            }
+
+            .thumb.bunnymate-video-thumb {
+                position: relative;
+            }
+
+            /* A 30px chip needs a smaller one */
+            .chip.small > .thumb.bunnymate-video-thumb::after {
+                width: 14px;
+                height: 14px;
             }
             CSS;
     }
