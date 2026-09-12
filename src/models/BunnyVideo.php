@@ -31,6 +31,20 @@ use yii\base\InvalidConfigException;
 class BunnyVideo extends Model
 {
 
+    // Const Properties
+    // =========================================================================
+
+    /** The metadata key the measured MP4 renditions are stored under */
+    public const MP4_RESOLUTIONS_KEY = 'bunnymateMp4Resolutions';
+
+    /**
+     * The highest rendition assumed to have an MP4, until one is measured.
+     *
+     * Bunny's MP4 fallback tops out here today. It's only a starting point: the real set is
+     * measured once a video finishes encoding, and that's what's used from then on.
+     */
+    private const ASSUMED_MP4_MAX = 1080;
+
     // Public Properties
     // =========================================================================
 
@@ -283,18 +297,23 @@ class BunnyVideo extends Model
      *
      * Bunny's MP4 fallback doesn't cover everything it encodes: a video with HLS renditions up
      * to 2160p may only have MP4s up to 1080p, and the API reports nothing about where the cut
-     * is, so the library's `mp4MaxRendition` is what decides it.
+     * is. So the real set is measured once the video has finished encoding and stored with its
+     * metadata; until then a conservative assumption stands in.
      *
      * @return string[]
      * @throws InvalidConfigException
      */
     public function getAvailableMp4Resolutions(): array
     {
-        $max = (int)$this->getLibrary()->mp4MaxRendition;
+        // Measured when the video finished encoding, so this is fact rather than inference
+        $measured = $this->metadata[self::MP4_RESOLUTIONS_KEY] ?? null;
+        if (is_array($measured)) {
+            return $measured;
+        }
 
         return array_values(array_filter(
             $this->getAvailableResolutions(),
-            static fn(string $r): bool => (int)$r <= $max,
+            static fn(string $r): bool => (int)$r <= self::ASSUMED_MP4_MAX,
         ));
     }
 

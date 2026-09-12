@@ -4,6 +4,7 @@ namespace vaersaagod\bunnymate\services;
 
 use Craft;
 use craft\helpers\Json;
+use craft\helpers\UrlHelper;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -193,6 +194,52 @@ class Stream extends Component
         } while (!empty($items) && count($videos) < $total);
 
         return $videos;
+    }
+
+    /**
+     * Works out which renditions a video actually has an MP4 for.
+     *
+     * Bunny's MP4 fallback stops short of the renditions it encodes for HLS, and nothing in
+     * the API says where: the video payload carries `availableResolutions`, which describes
+     * the HLS set, and `hasMP4Fallback`, which is a plain boolean. So the only way to know is
+     * to ask for the files.
+     *
+     * MP4s are produced from the bottom up, so the highest one that exists settles the rest.
+     * That makes this a handful of requests rather than one per rendition, and it only runs
+     * when a video's metadata is refreshed, not per page view.
+     *
+     * @param VideoLibrary $library
+     * @param string $videoGuid
+     * @param string[] $available The renditions Bunny reports, ascending
+     * @return string[] Those an MP4 exists for, ascending
+     */
+    public function detectMp4Resolutions(VideoLibrary $library, string $videoGuid, array $available): array
+    {
+        $client = Craft::createGuzzleClient([
+            'http_errors' => false,
+            'timeout' => 10,
+        ]);
+
+        foreach (array_reverse($available) as $index => $resolution) {
+            $url = $library->getVideoUrl($videoGuid, "play_$resolution.mp4");
+            try {
+                $response = $client->head($url, [
+                    'headers' => [
+                        // Libraries block referrer-less requests by default
+                        'Referer' => UrlHelper::baseSiteUrl(),
+                    ],
+                ]);
+            } catch (GuzzleException $e) {
+                Craft::warning("Unable to probe \"$url\": {$e->getMessage()}", __METHOD__);
+                return [];
+            }
+            if ($response->getStatusCode() < 400) {
+                // Everything at or below this one is present
+                return array_slice($available, 0, count($available) - $index);
+            }
+        }
+
+        return [];
     }
 
     /**

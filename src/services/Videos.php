@@ -96,7 +96,7 @@ class Videos extends Component
             $record->status = $status->value;
         }
         if ($metadata !== null) {
-            $record->metadata = Json::encode($metadata);
+            $record->metadata = Json::encode($this->_withMp4Resolutions($metadata, $libraryHandle, $videoGuid));
         }
         if (!$record->save()) {
             Craft::error("Unable to save video for asset $assetId: " . Json::encode($record->getErrors()), __METHOD__);
@@ -237,6 +237,47 @@ class Videos extends Component
 
     // Private Methods
     // =========================================================================
+
+    /**
+     * Adds the renditions an MP4 actually exists for to a video's metadata.
+     *
+     * Bunny doesn't report this, so it's measured once, when a video is finished encoding and
+     * hasn't been measured before. Until then the model falls back to a conservative cap.
+     *
+     * @param array $metadata
+     * @param string $libraryHandle
+     * @param string $videoGuid
+     * @return array
+     */
+    private function _withMp4Resolutions(array $metadata, string $libraryHandle, string $videoGuid): array
+    {
+        if (!empty($metadata[BunnyVideo::MP4_RESOLUTIONS_KEY])) {
+            return $metadata;
+        }
+        if ((int)($metadata['encodeProgress'] ?? 0) < 100 || empty($metadata['availableResolutions'])) {
+            return $metadata;
+        }
+        if (!($metadata['hasMP4Fallback'] ?? false)) {
+            $metadata[BunnyVideo::MP4_RESOLUTIONS_KEY] = [];
+            return $metadata;
+        }
+
+        $available = (new BunnyVideo(['metadata' => $metadata]))->getAvailableResolutions();
+
+        try {
+            $stream = BunnyMate::getInstance()->getStream();
+            $resolutions = $stream->detectMp4Resolutions($stream->getLibrary($libraryHandle), $videoGuid, $available);
+        } catch (\Throwable $e) {
+            Craft::error("Unable to detect MP4 renditions for \"$videoGuid\": {$e->getMessage()}", __METHOD__);
+            return $metadata;
+        }
+
+        if (!empty($resolutions)) {
+            $metadata[BunnyVideo::MP4_RESOLUTIONS_KEY] = $resolutions;
+        }
+
+        return $metadata;
+    }
 
     /**
      * @param VideoRecord $record
