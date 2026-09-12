@@ -85,6 +85,8 @@ class UploadController extends Controller
         $asset->folderPath = $folder->path;
         $asset->filename = $filename;
         $asset->kind = Asset::KIND_VIDEO;
+        // Craft sets this on its own upload path, and the asset index has a column for it
+        $asset->uploaderId = Craft::$app->getUser()->getId();
         // These assets hold no file of their own, so the create scenario (which requires a
         // temp file) doesn't apply
         $asset->setScenario(Asset::SCENARIO_INDEX);
