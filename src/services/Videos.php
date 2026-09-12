@@ -4,6 +4,7 @@ namespace vaersaagod\bunnymate\services;
 
 use Craft;
 use craft\elements\Asset;
+use craft\helpers\DateTimeHelper;
 use craft\helpers\Json;
 
 use vaersaagod\bunnymate\BunnyMate;
@@ -110,7 +111,13 @@ class Videos extends Component
             Craft::error("Unable to save video for asset $assetId: " . Json::encode($record->getErrors()), __METHOD__);
             return false;
         }
+
         unset($this->_videosByAssetId[$assetId]);
+
+        if ($metadata !== null) {
+            $this->_syncAssetAttributes($assetId, Json::decodeIfJson($record->metadata) ?: []);
+        }
+
         return true;
     }
 
@@ -284,7 +291,88 @@ class Videos extends Component
             $metadata[BunnyVideo::MP4_RESOLUTIONS_KEY] = $resolutions;
         }
 
+        if (!isset($metadata[BunnyVideo::ORIGINAL_SIZE_KEY]) && ($metadata['hasOriginal'] ?? false)) {
+            try {
+                $stream = BunnyMate::getInstance()->getStream();
+                $size = $stream->getOriginalSize($stream->getLibrary($libraryHandle), $videoGuid);
+            } catch (\Throwable $e) {
+                Craft::error("Unable to size the original for \"$videoGuid\": {$e->getMessage()}", __METHOD__);
+                $size = null;
+            }
+            if ($size !== null) {
+                $metadata[BunnyVideo::ORIGINAL_SIZE_KEY] = $size;
+            }
+        }
+
         return $metadata;
+    }
+
+    /**
+     * Copies what Bunny knows about a video onto its Craft asset.
+     *
+     * These assets hold no file of their own, so Craft has nothing to read dimensions or a size
+     * from and leaves those columns empty, which makes an asset index look broken. Bunny knows
+     * both, so they're written across whenever a video's metadata is refreshed.
+     *
+     * The size reported is the uploaded file's, not Bunny's `storageSize`, which counts every
+     * rendition as well and would be wildly larger than the file anyone uploaded.
+     *
+     * @param int $assetId
+     * @param array $metadata
+     * @return void
+     */
+    private function _syncAssetAttributes(int $assetId, array $metadata): void
+    {
+        $asset = Craft::$app->getAssets()->getAssetById($assetId);
+        if (!$asset) {
+            return;
+        }
+
+        $video = new BunnyVideo(['metadata' => $metadata]);
+        $width = isset($metadata['width']) ? (int)$metadata['width'] : null;
+        $height = isset($metadata['height']) ? (int)$metadata['height'] : null;
+        $size = $video->getOriginalSize();
+
+        $changed = false;
+
+        foreach (['width' => $width, 'height' => $height, 'size' => $size] as $attribute => $value) {
+            if ($value === null || $value <= 0 || (int)$asset->$attribute === $value) {
+                continue;
+            }
+            $asset->$attribute = $value;
+            $changed = true;
+        }
+
+        // Craft reads this from the file's modified time, which a placeholder doesn't have.
+        // When the video was uploaded is the nearest thing that's actually true.
+        $uploaded = DateTimeHelper::toDateTime($metadata['dateUploaded'] ?? null) ?: null;
+        if ($uploaded && (!$asset->dateModified || $asset->dateModified->getTimestamp() !== $uploaded->getTimestamp())) {
+            $asset->dateModified = $uploaded;
+            $changed = true;
+        }
+
+        // Craft derives the MIME type from the filename otherwise, and these are renamed to
+        // .mp4, so it's already right; setting it explicitly keeps it that way if that changes
+        if ($asset->mimeType !== 'video/mp4') {
+            $asset->mimeType = 'video/mp4';
+            $changed = true;
+        }
+
+        if (!$changed) {
+            return;
+        }
+
+        // The video is already attached, so the auto-upload handler would no-op anyway, but
+        // there's no reason for this save to reach it at all
+        $this->suspendAutoUpload = true;
+        try {
+            $asset->setScenario(Asset::SCENARIO_INDEX);
+            Craft::$app->getElements()->saveElement($asset, false);
+        } catch (\Throwable $e) {
+            Craft::error("Unable to update asset $assetId from its video: {$e->getMessage()}", __METHOD__);
+        } finally {
+            $this->suspendAutoUpload = false;
+        }
     }
 
     /**

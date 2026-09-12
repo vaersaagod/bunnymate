@@ -243,6 +243,40 @@ class Stream extends Component
     }
 
     /**
+     * Returns the size of a video's original file, in bytes.
+     *
+     * The video payload's `storageSize` covers every rendition plus the original, so it says
+     * nothing useful about the uploaded file on its own. This asks for it directly.
+     *
+     * @param VideoLibrary $library
+     * @param string $videoGuid
+     * @return int|null Null when the original isn't available
+     */
+    public function getOriginalSize(VideoLibrary $library, string $videoGuid): ?int
+    {
+        try {
+            $response = Craft::createGuzzleClient(['http_errors' => false, 'timeout' => 10])
+                ->head($library->getVideoUrl($videoGuid, 'original'), [
+                    'headers' => [
+                        // Libraries block referrer-less requests by default
+                        'Referer' => UrlHelper::baseSiteUrl(),
+                    ],
+                ]);
+        } catch (GuzzleException $e) {
+            Craft::warning("Unable to size the original for \"$videoGuid\": {$e->getMessage()}", __METHOD__);
+            return null;
+        }
+
+        if ($response->getStatusCode() >= 400) {
+            return null;
+        }
+
+        $length = (int)$response->getHeaderLine('Content-Length');
+
+        return $length > 0 ? $length : null;
+    }
+
+    /**
      * Deletes a video from Bunny.
      *
      * @param VideoLibrary $library

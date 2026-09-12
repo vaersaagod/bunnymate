@@ -25,6 +25,7 @@
 - Added the per-library `optimizerEnabled` setting, which lets control panel thumbnails be requested at the size Craft asked for when Bunny Optimizer is enabled on the pull zone.
 - An empty placeholder file is now written for videos uploaded straight to Bunny, so Craft's asset indexer doesn't list them as missing and offer to delete them. Added the `writePlaceholderFiles` setting.
 - Previewing a Bunny Stream video in the control panel now opens Bunny's player.
+- Video assets now get their dimensions, file size and modified date from Bunny, rather than being left empty because the asset holds no file. The size reported is the uploaded file's, not Bunny's total storage for the video.
 - Added a Bunny Stream panel to asset edit screens, showing encoding status and metadata, with a button to refresh it from Bunny when the webhook hasn't landed.
 - Added `asset.bunnyVideo.originalUrl` and `hasOriginal`, for the uploaded file itself where the library keeps originals.
 - Added `asset.bunnyVideo.downloadUrl`, which serves the original as a download under its original filename, and the `allowOriginalDownloads` setting governing it on the front end. The asset edit screen uses it.

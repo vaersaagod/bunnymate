@@ -29,6 +29,7 @@ use yii\base\InvalidConfigException;
  * @property-read string|null $originalUrl
  * @property-read string|null $originalFilename
  * @property-read string|null $downloadUrl
+ * @property-read int|null $originalSize
  *
  * @author Værsågod
  * @since 2.1.0
@@ -44,6 +45,9 @@ class BunnyVideo extends Model
 
     /** The metadata key the uploaded filename is stored under */
     public const ORIGINAL_FILENAME_KEY = 'bunnymateOriginalFilename';
+
+    /** The metadata key the original file's size is stored under */
+    public const ORIGINAL_SIZE_KEY = 'bunnymateOriginalSize';
 
     /**
      * The highest rendition assumed to have an MP4, until one is measured.
@@ -318,6 +322,19 @@ class BunnyVideo extends Model
     {
         $filename = $this->metadata[self::ORIGINAL_FILENAME_KEY] ?? null;
         return is_string($filename) && $filename !== '' ? $filename : null;
+    }
+
+    /**
+     * Returns the size of the original file in bytes, if it's known.
+     *
+     * Not the same as Bunny's `storageSize`, which covers every rendition as well.
+     *
+     * @return int|null
+     */
+    public function getOriginalSize(): ?int
+    {
+        $size = $this->metadata[self::ORIGINAL_SIZE_KEY] ?? null;
+        return is_numeric($size) && $size > 0 ? (int)$size : null;
     }
 
     /**

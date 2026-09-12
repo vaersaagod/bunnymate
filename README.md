@@ -334,6 +334,16 @@ And `downloadUrl` streams through your server rather than straight from the CDN,
 
 `hasOriginal` is false when the library discards originals after encoding, in which case there's nothing to recover.
 
+### Asset metadata
+
+Assets uploaded straight to Bunny hold no file for Craft to read, so their dimensions, size and modified date would otherwise stay empty and an asset index would look half broken.
+
+Bunny knows all of it, so it's written onto the asset whenever a video's metadata is refreshed: `width` and `height` as soon as Bunny reports them, and `size` and `dateModified` once encoding finishes.
+
+The size reported is the **uploaded file's**, not Bunny's `storageSize`, which counts every rendition alongside the original and is several times larger than anything anyone uploaded. For one 4K video here that's 296 MB against a `storageSize` of 718 MB.
+
+Videos uploaded before this existed fill in on their next refresh, whether that's a webhook or the panel's **Refresh from Bunny** button.
+
 ### Videos deleted on Bunny
 
 Deleting a video in Bunny's dashboard fires no webhook, so Craft has no way to hear about it. Worse, the asset carries on looking fine for a while, because the CDN edge and any cached thumbnails still hold copies. Once those expire, every URL 404s.
