@@ -7,10 +7,14 @@ use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\base\Plugin;
+use craft\db\Query;
 use craft\elements\Asset;
+use craft\elements\db\AssetQuery;
+use craft\elements\db\ElementQuery;
 use craft\events\AssetPreviewEvent;
 use craft\events\DefineAssetThumbUrlEvent;
 use craft\events\DefineAssetUrlEvent;
+use craft\events\CancelableEvent;
 use craft\events\DefineBehaviorsEvent;
 use craft\events\DefineElementHtmlEvent;
 use craft\events\DefineHtmlEvent;
@@ -31,6 +35,7 @@ use craft\web\View;
 
 use vaersaagod\bunnymate\assetpreviews\BunnyVideoPreview;
 use vaersaagod\bunnymate\behaviors\VideoAssetBehavior;
+use vaersaagod\bunnymate\behaviors\VideoAssetQueryBehavior;
 use vaersaagod\bunnymate\fs\BunnyStorageFs;
 use vaersaagod\bunnymate\models\Settings;
 use vaersaagod\bunnymate\queue\jobs\UploadVideo;
@@ -110,6 +115,7 @@ class BunnyMate extends Plugin
         $this->_registerVideoThumbBadge();
         $this->_registerVideoPreview();
         $this->_registerGarbageCollection();
+        $this->_registerVideoQueries();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -880,6 +886,35 @@ class BunnyMate extends Plugin
                 if ($deleted > 0) {
                     Craft::info("Deleted $deleted orphaned Bunny Stream video(s)", __METHOD__);
                 }
+            }
+        );
+    }
+
+
+    /**
+     * Adds a `bunnyVideo()` parameter to asset queries.
+     *
+     * @return void
+     */
+    private function _registerVideoQueries(): void
+    {
+        Event::on(
+            AssetQuery::class,
+            Query::EVENT_DEFINE_BEHAVIORS,
+            static function (DefineBehaviorsEvent $event) {
+                $event->behaviors[VideoAssetQueryBehavior::BEHAVIOR_NAME] = VideoAssetQueryBehavior::class;
+            }
+        );
+
+        Event::on(
+            AssetQuery::class,
+            ElementQuery::EVENT_BEFORE_PREPARE,
+            static function (CancelableEvent $event) {
+                /** @var AssetQuery $query */
+                $query = $event->sender;
+                /** @var VideoAssetQueryBehavior|null $behavior */
+                $behavior = $query->getBehavior(VideoAssetQueryBehavior::BEHAVIOR_NAME);
+                $behavior?->applyTo($query);
             }
         );
     }
