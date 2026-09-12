@@ -18,6 +18,7 @@
 - Videos that reach a mapped volume any other way (a normal upload, an import, a programmatic save) are now sent to Bunny Stream too, via Bunny's URL fetch. Added the `autoUploadVideos` setting to control this.
 - Replacing a video asset's file now replaces its Bunny Stream video.
 - Video assets now use Bunny's poster frame as their control panel thumbnail, rather than a generic file-type icon.
+- Control panel thumbnails are now resized with Imager X where it's installed, so a 4K poster frame becomes a ~3KB thumbnail instead of a 150KB one. Added the `transformThumbnails` setting.
 - Added the per-library `optimizerEnabled` setting, which lets control panel thumbnails be requested at the size Craft asked for when Bunny Optimizer is enabled on the pull zone.
 - Added a Bunny Stream panel to asset edit screens, showing encoding status and metadata, with a button to refresh it from Bunny when the webhook hasn't landed.
 

@@ -38,6 +38,9 @@ return [
     // asset's URL, so the volume must be reachable from the public internet.
     'autoUploadVideos' => true,
 
+    // Whether to resize control panel thumbnails with Imager X, when it's installed
+    'transformThumbnails' => true,
+
     // Whether asset.url should return the Bunny playback URL for Bunny Stream videos
     'overrideAssetUrls' => true,
 

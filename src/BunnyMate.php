@@ -18,6 +18,7 @@ use craft\helpers\Cp;
 use craft\helpers\ElementHelper;
 use craft\helpers\Html;
 use craft\helpers\Json;
+use craft\helpers\UrlHelper;
 use craft\helpers\Queue;
 use craft\services\Assets;
 use craft\services\Fs;
@@ -562,9 +563,9 @@ class BunnyMate extends Plugin
      * nothing to generate a thumbnail from, and the rest are videos, which Craft can't
      * transform as images.
      *
-     * Note that unless Bunny Optimizer is enabled on the library's pull zone, the poster frame
-     * is served at its full resolution and scaled down by the browser. Bunny ignores `?width=`
-     * without it, so there's no way to ask for a smaller one.
+     * Bunny only resizes the poster frame when Optimizer is enabled on the pull zone, so where
+     * Imager X is installed it's used to resize instead, which also caches the result locally
+     * rather than serving the full-resolution frame on every request.
      *
      * @return void
      */
@@ -583,7 +584,11 @@ class BunnyMate extends Plugin
                     return;
                 }
                 try {
-                    $url = $video->getThumbnailUrl($event->width, $event->height);
+                    // Imager gets the unsized frame, so one cached source serves every size
+                    $useImager = $this->getSettings()->transformThumbnails && $this->_getImagerService() !== null;
+                    $url = $useImager
+                        ? $video->getThumbnailUrl()
+                        : $video->getThumbnailUrl($event->width, $event->height);
                 } catch (\Throwable $e) {
                     Craft::error($e->getMessage(), __METHOD__);
                     return;
@@ -591,9 +596,74 @@ class BunnyMate extends Plugin
                 if (empty($url)) {
                     return;
                 }
-                $event->url = $url;
+                $event->url = $this->transformThumbUrl($url, $event->width, $event->height);
             }
         );
+    }
+
+    /**
+     * Resizes a Bunny poster frame with Imager X, if it's installed.
+     *
+     * Returns the URL untouched when Imager isn't available or the transform fails, so a
+     * thumbnail is always produced, just a larger one.
+     *
+     * @param string $url
+     * @param int $width
+     * @param int $height
+     * @return string
+     * @since 2.1.0
+     */
+    public function transformThumbUrl(string $url, int $width, int $height): string
+    {
+        if (!$this->getSettings()->transformThumbnails) {
+            return $url;
+        }
+
+        $imager = $this->_getImagerService();
+        if ($imager === null) {
+            return $url;
+        }
+
+        try {
+            $transformed = $imager->transformImage($url, [
+                'width' => $width,
+                'height' => $height,
+                'mode' => 'crop',
+            ], null, [
+                // Bunny libraries block requests without a referrer by default, and Imager
+                // downloads over curl, which sends none
+                'curlOptions' => [
+                    CURLOPT_REFERER => UrlHelper::baseSiteUrl(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Craft::error("Unable to transform \"$url\": {$e->getMessage()}", __METHOD__);
+            return $url;
+        }
+
+        return $transformed?->getUrl() ?: $url;
+    }
+
+    /**
+     * Returns Imager X's transform service, or null if the plugin isn't available.
+     *
+     * Imager is an optional dependency, so this is deliberately resolved by handle rather than
+     * by importing anything from it.
+     *
+     * @return mixed
+     */
+    private function _getImagerService(): mixed
+    {
+        $plugin = Craft::$app->getPlugins()->getPlugin('imager-x');
+        if ($plugin === null) {
+            return null;
+        }
+        try {
+            return $plugin->get('imager');
+        } catch (\Throwable $e) {
+            Craft::error($e->getMessage(), __METHOD__);
+            return null;
+        }
     }
 
 }

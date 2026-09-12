@@ -188,7 +188,13 @@ It also carries a **Refresh from Bunny** button, which pulls the video's current
 
 Video assets show Bunny's poster frame as their control panel thumbnail, instead of the generic file-type icon Craft would otherwise use. Craft can't generate one itself: the assets uploaded over TUS have no file at all, and the rest are videos, which its image drivers can't open.
 
-Bunny only resizes images from the URL when **Bunny Optimizer** is enabled on the library's pull zone. It's off by default, and without it `?width=` is ignored and the poster frame is served at full resolution, so a 4K video yields a 4K JPEG scaled down by the browser for every thumbnail. Turn Optimizer on in the Bunny dashboard and set `optimizerEnabled` to `true` on the library config, and BunnyMate will request thumbnails at the size Craft asked for.
+Bunny serves the poster frame at full resolution, and only resizes from the URL when **Bunny Optimizer** is enabled on the pull zone. Left alone, a 4K video would mean a 4K JPEG for every thumbnail.
+
+So where [Imager X](https://imager-x.spacecat.ninja) is installed, BunnyMate resizes with that instead. The frame is fetched once, transformed to whatever size Craft asked for and cached locally: a 120px thumbnail from a 4K poster comes out around 3KB rather than 150KB. Set `transformThumbnails` to `false` to turn this off.
+
+Imager downloads over curl, which sends no referrer, and Bunny libraries block referrer-less requests by default. BunnyMate passes the site's own URL as the referrer so this works either way.
+
+Without Imager, the poster frame is used as Bunny serves it. If you have Bunny Optimizer enabled on the pull zone, set `optimizerEnabled` to `true` on the library config and BunnyMate will ask Bunny for the size Craft wanted.
 
 ### Non-video files
 

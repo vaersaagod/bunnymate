@@ -69,6 +69,18 @@ class Settings extends Model
     public bool $autoUploadVideos = true;
 
     /**
+     * @var bool Whether control panel thumbnails should be resized with Imager X, when it's
+     * installed.
+     *
+     * Bunny only resizes poster frames when Optimizer is enabled on the pull zone, so without
+     * this a 4K video yields a 4K JPEG for every thumbnail. Imager resizes once and caches the
+     * result locally.
+     *
+     * @since 2.1.0
+     */
+    public bool $transformThumbnails = true;
+
+    /**
      * @var bool Whether `asset.url` should return the Bunny playback URL for videos.
      *
      * Assets backed by Bunny Stream have no file of their own, so without this their URL
