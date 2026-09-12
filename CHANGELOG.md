@@ -26,6 +26,7 @@
 - An empty placeholder file is now written for videos uploaded straight to Bunny, so Craft's asset indexer doesn't list them as missing and offer to delete them. Added the `writePlaceholderFiles` setting.
 - Previewing a Bunny Stream video in the control panel now opens Bunny's player.
 - Added a Bunny Stream panel to asset edit screens, showing encoding status and metadata, with a button to refresh it from Bunny when the webhook hasn't landed.
+- Added `asset.bunnyVideo.originalUrl` and `hasOriginal`, for the uploaded file itself where the library keeps originals. The asset edit screen offers it as a download.
 - Added `asset.bunnyVideo.statusLabel`, which reports a video's state from its encoding progress rather than Bunny's status code.
 
 - Bunny videos are now deleted when Craft's garbage collection purges their trashed asset.

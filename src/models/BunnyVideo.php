@@ -24,6 +24,8 @@ use yii\base\InvalidConfigException;
  * @property-read string|null $hlsUrl
  * @property-read string|null $thumbnailUrl
  * @property-read string|null $previewUrl
+ * @property-read bool $hasOriginal
+ * @property-read string|null $originalUrl
  *
  * @author Værsågod
  * @since 2.1.0
@@ -264,6 +266,37 @@ class BunnyVideo extends Model
         }
 
         return $library->getVideoUrl($this->videoGuid, $filename);
+    }
+
+    /**
+     * Returns whether Bunny still has the file that was uploaded.
+     *
+     * Only true when the library keeps original files. With that off, Bunny discards the
+     * upload once it has encoded it, and there is nothing to recover.
+     *
+     * @return bool
+     */
+    public function getHasOriginal(): bool
+    {
+        return (bool)($this->metadata['hasOriginal'] ?? false);
+    }
+
+    /**
+     * Returns a URL for the file that was uploaded, untouched.
+     *
+     * This is the upload itself rather than a rendition, so it isn't capped the way the MP4s
+     * are: a 4K upload is served back at 4K, at its original size. Anyone holding the URL can
+     * download it, so enable token authentication on the library if that matters.
+     *
+     * @return string|null Null when the library doesn't keep originals
+     * @throws InvalidConfigException
+     */
+    public function getOriginalUrl(): ?string
+    {
+        if (!$this->getHasOriginal()) {
+            return null;
+        }
+        return $this->getLibrary()->getVideoUrl($this->videoGuid, 'original');
     }
 
     /**

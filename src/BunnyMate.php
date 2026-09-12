@@ -480,6 +480,12 @@ class BunnyMate extends Plugin
             Craft::t('_bunnymate', 'Video ID') => Html::tag('code', Html::encode($video->videoGuid), [
                 'style' => 'font-size: 0.8em; word-break: break-all;',
             ]),
+            Craft::t('_bunnymate', 'Original') => $video->getHasOriginal()
+                ? Html::a(Craft::t('_bunnymate', 'Download'), $video->getOriginalUrl(), [
+                    'target' => '_blank',
+                    'rel' => 'noopener',
+                ])
+                : null,
         ];
 
         $fields = '';

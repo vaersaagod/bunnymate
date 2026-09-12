@@ -163,6 +163,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |
 | `previewUrl` | Animated WebP preview |
 | `embedUrl(params)` | Bunny's iframe player URL |
+| `hasOriginal` / `originalUrl` | The uploaded file itself. See [The original file](#the-original-file). |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
 | `availableResolutions` | Every rendition Bunny encoded for HLS, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
 | `availableMp4Resolutions` | Those an MP4 actually exists for, measured rather than assumed. See [Renditions](#renditions). |
@@ -299,6 +300,29 @@ If MuxMate is also installed, it claims the preview for every video asset whethe
 ### Non-video files
 
 Only video files are sent to Bunny Stream. An image, PDF or anything else uploaded to a mapped volume is stored in that volume exactly as it would be otherwise, with transforms and asset URLs untouched. On a volume using the Bunny Storage filesystem, that means it's served over the pull zone like any other file.
+
+### The original file
+
+Where a library keeps original files, Bunny serves the upload back untouched, and
+`asset.bunnyVideo.originalUrl` points at it. The asset edit screen offers it as a download.
+
+```twig
+{% if video.hasOriginal %}
+    <a href="{{ video.originalUrl }}" download>{{ "Download original"|t }}</a>
+{% endif %}
+```
+
+This matters more than it might look, because assets uploaded straight to Bunny hold no file of their own: the original on Bunny is the only copy of what was uploaded, and this is how to get it back.
+
+Three things to weigh:
+
+Unlike the MP4 renditions, this isn't capped. A 4K upload is served back at 4K, at its full original size, which may be hundreds of megabytes.
+
+Keeping originals roughly doubles what a video costs to store, since the upload sits alongside every rendition.
+
+And the URL is guessable from the video's ID, so anyone holding it can download the full-resolution master. Enable token authentication on the library if that matters, and BunnyMate will sign this URL along with the others.
+
+`hasOriginal` is false when the library discards originals after encoding, in which case there's nothing to recover.
 
 ### Videos deleted on Bunny
 
