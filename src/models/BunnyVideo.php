@@ -162,13 +162,29 @@ class BunnyVideo extends Model
      * Unlike the playback URLs this is available before encoding finishes, so it can be used
      * as a poster frame while a video is still processing.
      *
+     * Passing dimensions only has an effect when Bunny Optimizer is enabled on the library's
+     * pull zone. Without it Bunny ignores the parameters and serves the poster frame at its
+     * full resolution, so there's no point sending them.
+     *
+     * @param int|null $width
+     * @param int|null $height
      * @return string|null
      * @throws InvalidConfigException
      */
-    public function getThumbnailUrl(): ?string
+    public function getThumbnailUrl(?int $width = null, ?int $height = null): ?string
     {
+        $library = $this->getLibrary();
         $filename = $this->metadata['thumbnailFileName'] ?? 'thumbnail.jpg';
-        return $this->getLibrary()->getVideoUrl($this->videoGuid, $filename);
+
+        if ($library->optimizerEnabled && ($width || $height)) {
+            $params = array_filter([
+                'width' => $width,
+                'height' => $height,
+            ]);
+            $filename .= '?' . http_build_query($params);
+        }
+
+        return $library->getVideoUrl($this->videoGuid, $filename);
     }
 
     /**

@@ -23,6 +23,9 @@ return [
         //    'hostname' => 'vz-xxxxxxxx-xxx.b-cdn.net',
         //    // Only needed if the library's pull zone has token authentication enabled
         //    'tokenAuthKey' => '$BUNNY_STREAM_TOKEN_KEY',
+        //    // Set to true if Bunny Optimizer is enabled on the library's pull zone, so
+        //    // control panel thumbnails can be resized rather than served full size
+        //    'optimizerEnabled' => false,
         //],
     ],
     // Maps volume handles to video library handles. Volumes that aren't listed are left alone.

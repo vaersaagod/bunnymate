@@ -48,6 +48,15 @@ class VideoLibrary extends Model
     /** @var int How long signed URLs should remain valid, in seconds */
     public int $signedUrlDuration = 3600;
 
+    /**
+     * @var bool Whether Bunny Optimizer is enabled on this library's pull zone.
+     *
+     * Optimizer is what resizes images from the URL. With it off, `?width=` is ignored and
+     * Bunny serves the full-resolution poster frame, so control panel thumbnails are the
+     * whole image scaled down by the browser.
+     */
+    public bool $optimizerEnabled = false;
+
     /** @var string|null An optional collection to create videos in */
     public ?string $collectionId = null;
 
@@ -104,6 +113,16 @@ class VideoLibrary extends Model
     {
         $url = "https://$this->hostname/$videoGuid/" . ltrim($file, '/');
         return $this->signUrl($url, $videoGuid);
+    }
+
+    /**
+     * Returns whether Bunny Optimizer is enabled on this library's pull zone.
+     *
+     * @return bool
+     */
+    public function getIsOptimizerEnabled(): bool
+    {
+        return $this->optimizerEnabled;
     }
 
     /**

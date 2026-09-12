@@ -148,7 +148,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `status` | A `VideoStatus` enum case; `status.label()` for a readable name |
 | `hlsUrl` | HLS playlist. Null until playable. |
 | `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given. |
-| `thumbnailUrl` | Poster frame. Available before encoding finishes. |
+| `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |
 | `previewUrl` | Animated WebP preview |
 | `embedUrl(params)` | Bunny's iframe player URL |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
@@ -183,6 +183,12 @@ Set `autoUploadVideos` to `false` to turn this off and rely on the uploader alon
 Video assets backed by Bunny Stream get a **Bunny Stream** panel in their edit screen sidebar, showing encoding status, available resolutions, dimensions, duration and the video's GUID.
 
 It also carries a **Refresh from Bunny** button, which pulls the video's current state down from Bunny on demand. The webhook normally keeps this in step, so the button is for when it doesn't: no webhook URL configured, an environment Bunny can't reach, or a delivery that was missed.
+
+### Control panel thumbnails
+
+Video assets show Bunny's poster frame as their control panel thumbnail, instead of the generic file-type icon Craft would otherwise use. Craft can't generate one itself: the assets uploaded over TUS have no file at all, and the rest are videos, which its image drivers can't open.
+
+Bunny only resizes images from the URL when **Bunny Optimizer** is enabled on the library's pull zone. It's off by default, and without it `?width=` is ignored and the poster frame is served at full resolution, so a 4K video yields a 4K JPEG scaled down by the browser for every thumbnail. Turn Optimizer on in the Bunny dashboard and set `optimizerEnabled` to `true` on the library config, and BunnyMate will request thumbnails at the size Craft asked for.
 
 ### Non-video files
 

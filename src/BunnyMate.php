@@ -7,6 +7,7 @@ use craft\base\Element;
 use craft\base\Model;
 use craft\base\Plugin;
 use craft\elements\Asset;
+use craft\events\DefineAssetThumbUrlEvent;
 use craft\events\DefineAssetUrlEvent;
 use craft\events\DefineBehaviorsEvent;
 use craft\events\DefineHtmlEvent;
@@ -101,6 +102,7 @@ class BunnyMate extends Plugin
         $this->_registerVideoAutoUpload();
         $this->_registerStreamUploader();
         $this->_registerVideoPanel();
+        $this->_registerVideoThumbs();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -550,6 +552,47 @@ class BunnyMate extends Plugin
             Html::tag('div', Html::tag('label', Html::encode($label)), ['class' => 'heading']) .
             Html::tag('div', $value, ['class' => ['input', 'ltr']]),
             ['class' => 'field'],
+        );
+    }
+
+    /**
+     * Uses Bunny's poster frame for control panel thumbnails.
+     *
+     * Without this, video assets fall back to a generic file-type icon: the fileless ones have
+     * nothing to generate a thumbnail from, and the rest are videos, which Craft can't
+     * transform as images.
+     *
+     * Note that unless Bunny Optimizer is enabled on the library's pull zone, the poster frame
+     * is served at its full resolution and scaled down by the browser. Bunny ignores `?width=`
+     * without it, so there's no way to ask for a smaller one.
+     *
+     * @return void
+     */
+    private function _registerVideoThumbs(): void
+    {
+        Event::on(
+            Assets::class,
+            Assets::EVENT_DEFINE_THUMB_URL,
+            function (DefineAssetThumbUrlEvent $event) {
+                $asset = $event->asset;
+                if ($asset->kind !== Asset::KIND_VIDEO) {
+                    return;
+                }
+                $video = $this->getVideos()->getVideoForAsset($asset);
+                if (!$video || !$video->getIsReady()) {
+                    return;
+                }
+                try {
+                    $url = $video->getThumbnailUrl($event->width, $event->height);
+                } catch (\Throwable $e) {
+                    Craft::error($e->getMessage(), __METHOD__);
+                    return;
+                }
+                if (empty($url)) {
+                    return;
+                }
+                $event->url = $url;
+            }
         );
     }
 
