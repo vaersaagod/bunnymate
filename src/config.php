@@ -48,6 +48,10 @@ return [
     // Whether to resize control panel thumbnails with Imager X, when it's installed
     'transformThumbnails' => true,
 
+    // Which MP4 rendition asset.url should point at, e.g. '1080p'. Null uses the highest one
+    // Bunny produced. A video without that exact rendition falls back to the closest one below.
+    'videoUrlRendition' => null,
+
     // Whether asset.url should return the Bunny playback URL for Bunny Stream videos
     'overrideAssetUrls' => true,
 

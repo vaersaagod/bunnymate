@@ -269,7 +269,9 @@ class BunnyMate extends Plugin
                         // An MP4 rendition first: this URL ends up in plain <video> elements,
                         // including Craft's own on the asset edit screen, and only Safari
                         // plays an HLS playlist natively
-                        : ($video->getMp4Url() ?? $video->getHlsUrl() ?? $video->getThumbnailUrl());
+                        : ($video->getMp4Url($this->getSettings()->videoUrlRendition)
+                            ?? $video->getHlsUrl()
+                            ?? $video->getThumbnailUrl());
                 } catch (\Throwable $e) {
                     Craft::error($e->getMessage(), __METHOD__);
                     return;

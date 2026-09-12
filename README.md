@@ -147,7 +147,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `isReady` / `isFailed` | Whether the video is playable, or failed to encode |
 | `status` | A `VideoStatus` enum case; `status.label()` for a readable name. `Playable` means one rendition is done and the video plays while encoding continues; `Ready` means every rendition is finished. |
 | `hlsUrl` | HLS playlist. Null until playable. |
-| `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given. |
+| `mp4Url(resolution)` | MP4 rendition. Needs MP4 fallback enabled; highest available if no resolution given, and an unavailable one falls back to the closest below it. |
 | `thumbnailUrl(width, height)` | Poster frame. Available before encoding finishes. Dimensions only apply when `optimizerEnabled` is set. |
 | `previewUrl` | Animated WebP preview |
 | `embedUrl(params)` | Bunny's iframe player URL |
@@ -158,7 +158,15 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 
 Assets backed by Bunny Stream hold no file of their own, so `asset.url` would otherwise resolve to a path that 404s. BunnyMate overrides it via `Asset::EVENT_BEFORE_DEFINE_URL`, and a transform request returns the poster frame instead. Set `overrideAssetUrls` to `false` to opt out.
 
-`asset.url` returns the highest **MP4** rendition rather than the HLS playlist, because this URL is what ends up in plain `<video>` elements, including Craft's own on the asset edit screen, and only Safari plays HLS natively. Templates that want adaptive streaming should ask for `asset.bunnyVideo.hlsUrl`, and that needs a player like hls.js outside Safari.
+`asset.url` returns an **MP4** rendition rather than the HLS playlist, because this URL is what ends up in plain `<video>` elements, including Craft's own on the asset edit screen, and only Safari plays HLS natively. Templates that want adaptive streaming should ask for `asset.bunnyVideo.hlsUrl`, and that needs a player like hls.js outside Safari.
+
+Which rendition is set by `videoUrlRendition`, which defaults to the highest one Bunny produced:
+
+```php
+'videoUrlRendition' => '1080p',
+```
+
+Renditions are per video: Bunny only encodes up to the source resolution, so a 720p upload never has a 1080p rendition. Rather than break, a rendition that wasn't produced falls back to the closest one below it, or to the lowest available if the request was below everything on offer. Bunny's own list of available resolutions is what's consulted, so neither `asset.url` nor `mp4Url()` ever returns a URL that 404s.
 
 ### Uploading
 

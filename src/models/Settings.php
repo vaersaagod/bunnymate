@@ -96,6 +96,16 @@ class Settings extends Model
     public bool $transformThumbnails = true;
 
     /**
+     * @var string|null The MP4 rendition `asset.url` should point at, e.g. `'1080p'`.
+     *
+     * Null uses the highest rendition Bunny produced. A rendition that wasn't produced for a
+     * given video falls back to the closest one below it, so this never yields a dead URL.
+     *
+     * @since 2.1.0
+     */
+    public ?string $videoUrlRendition = null;
+
+    /**
      * @var bool Whether `asset.url` should return the Bunny playback URL for videos.
      *
      * Assets backed by Bunny Stream have no file of their own, so without this their URL

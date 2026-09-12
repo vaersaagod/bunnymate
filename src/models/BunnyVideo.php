@@ -130,13 +130,17 @@ class BunnyVideo extends Model
     }
 
     /**
-     * Returns an MP4 URL for the given resolution, or null if that resolution isn't available.
+     * Returns an MP4 URL for the video.
      *
-     * Requires MP4 fallback to be enabled on the library. With no resolution given, the
-     * highest available one is used.
+     * Requires MP4 fallback to be enabled on the library. With no resolution given, the highest
+     * available one is used.
+     *
+     * A requested resolution that Bunny didn't produce falls back to the closest one below it,
+     * or to the lowest available if the request was below everything on offer. Bunny's list of
+     * available resolutions is what's consulted, so this never returns a URL that would 404.
      *
      * @param string|null $resolution e.g. `720p`
-     * @return string|null
+     * @return string|null Null only if the video has no MP4 renditions at all
      * @throws InvalidConfigException
      */
     public function getMp4Url(?string $resolution = null): ?string
@@ -144,16 +148,44 @@ class BunnyVideo extends Model
         if (!$this->getIsReady()) {
             return null;
         }
+
         $available = $this->getAvailableResolutions();
         if (empty($available)) {
             return null;
         }
-        if ($resolution === null) {
-            $resolution = $available[array_key_last($available)];
-        } elseif (!in_array($resolution, $available, true)) {
-            return null;
-        }
+
+        $resolution = $this->resolveRendition($resolution);
+
         return $this->getLibrary()->getVideoUrl($this->videoGuid, "play_$resolution.mp4");
+    }
+
+    /**
+     * Resolves a requested rendition against the ones Bunny actually produced.
+     *
+     * @param string|null $resolution
+     * @return string The closest available rendition
+     */
+    public function resolveRendition(?string $resolution): string
+    {
+        $available = $this->getAvailableResolutions();
+
+        // No preference, or one that was actually encoded
+        if ($resolution === null) {
+            return $available[array_key_last($available)];
+        }
+        if (in_array($resolution, $available, true)) {
+            return $resolution;
+        }
+
+        // Otherwise the closest one below it, so nobody is served something larger than asked
+        $wanted = (int)$resolution;
+        $lower = array_values(array_filter($available, static fn(string $r): bool => (int)$r <= $wanted));
+        if (!empty($lower)) {
+            return $lower[array_key_last($lower)];
+        }
+
+        // Everything on offer is larger than asked for, so take the smallest of them
+        return $available[0];
     }
 
     /**
