@@ -4,6 +4,7 @@ namespace vaersaagod\bunnymate\queue\jobs;
 
 use Craft;
 use craft\elements\Asset;
+use craft\helpers\UrlHelper;
 use craft\queue\BaseJob;
 
 use vaersaagod\bunnymate\BunnyMate;
@@ -64,6 +65,16 @@ class UploadVideo extends BaseJob
             return;
         }
 
+        // Volumes often have a relative base URL; Bunny needs somewhere it can actually reach
+        if (!UrlHelper::isAbsoluteUrl($url)) {
+            $url = UrlHelper::siteUrl($url);
+        }
+
+        if (!UrlHelper::isAbsoluteUrl($url)) {
+            Craft::error("Unable to send asset $this->assetId to Bunny Stream: \"$url\" isn't an absolute URL. Bunny fetches the file over HTTP, so the volume has to be reachable from the public internet.", __METHOD__);
+            return;
+        }
+
         $this->setProgress($queue, 0.2);
 
         $videoGuid = $stream->createVideo($library, $asset->getFilename(false));
@@ -71,9 +82,22 @@ class UploadVideo extends BaseJob
 
         $this->setProgress($queue, 0.6);
 
-        if (!$stream->fetchVideo($library, $videoGuid, $url)) {
-            // Don't leave a record pointing at an empty video
-            Craft::error("Bunny Stream refused to fetch \"$url\" for asset $this->assetId", __METHOD__);
+        // A rejected fetch surfaces as an exception, not a false return, so both have to be
+        // handled or the video is created on Bunny and never cleaned up
+        try {
+            $fetched = $stream->fetchVideo($library, $videoGuid, $url);
+            $error = null;
+        } catch (\Throwable $e) {
+            $fetched = false;
+            $error = $e->getMessage();
+        }
+
+        if (!$fetched) {
+            // Don't leave a record pointing at a video with no bytes
+            Craft::error(
+                "Bunny Stream refused to fetch \"$url\" for asset $this->assetId" . ($error ? ": $error" : ''),
+                __METHOD__,
+            );
             $videos->deleteVideoForAsset($this->assetId);
             return;
         }
