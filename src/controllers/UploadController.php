@@ -5,6 +5,7 @@ namespace vaersaagod\bunnymate\controllers;
 use Craft;
 use craft\elements\Asset;
 use craft\helpers\Assets as AssetsHelper;
+use craft\helpers\Db;
 use craft\helpers\FileHelper;
 use craft\web\Controller;
 
@@ -75,6 +76,13 @@ class UploadController extends Controller
         // it advertise video/quicktime for an MP4 URL, which browsers refuse to play.
         $originalFilename = $filename;
         $filename = sprintf('%s.mp4', pathinfo($filename, PATHINFO_FILENAME));
+
+        // Craft's own uploader resolves filename clashes, by prompt or by renaming. Nothing
+        // asks here, and two assets sharing a name in one folder would share one placeholder
+        // file, so deleting either would leave the other pointing at nothing.
+        if ($this->_filenameExists($filename, $folder->id)) {
+            $filename = Craft::$app->getAssets()->getNameReplacementInFolder($filename, $folder->id);
+        }
 
         $stream = BunnyMate::getInstance()->getStream();
         $videoGuid = $stream->createVideo($library, pathinfo($filename, PATHINFO_FILENAME));
@@ -270,6 +278,22 @@ class UploadController extends Controller
             // Not worth failing the upload over; the video itself is unaffected
             Craft::warning("Unable to write a placeholder for asset $asset->id: {$e->getMessage()}", __METHOD__);
         }
+    }
+
+    /**
+     * Returns whether a folder already holds an asset with the given filename.
+     *
+     * @param string $filename
+     * @param int $folderId
+     * @return bool
+     */
+    private function _filenameExists(string $filename, int $folderId): bool
+    {
+        return Asset::find()
+            ->folderId($folderId)
+            ->filename(Db::escapeParam($filename))
+            ->status(null)
+            ->exists();
     }
 
     /**
