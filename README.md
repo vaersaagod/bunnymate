@@ -309,6 +309,17 @@ The cost is that anything reading the asset's own file gets an empty one. Playba
 
 ### Known limitations
 
-An asset that is moved to the trash and later purged by garbage collection leaves its Bunny video behind, since Craft's GC deletes elements with raw SQL and fires no element events. Deleting an asset outright removes the Bunny video correctly.
+Deleting an asset outright removes its Bunny video. Moving one to the trash deliberately doesn't, since a trashed asset can be restored and a deleted video couldn't be.
+
+That leaves a gap: when Craft's garbage collection eventually purges the trash, it deletes elements with raw SQL and fires no element events, so nothing gets the chance to tell Bunny. `Gc::run()` hard-deletes at the start and only fires `EVENT_RUN` afterwards, by which point the rows that held the video IDs have already cascaded away, so there's nothing to hook.
+
+Use the prune command to clear up afterwards. It lists videos in a library that no longer belong to a Craft asset, and deletes nothing without `--delete`:
+
+```
+php craft _bunnymate/stream/prune <library>
+php craft _bunnymate/stream/prune <library> --delete
+```
+
+Note that this reports any video without a Craft asset, including ones uploaded through Bunny's own dashboard, so read the list before deleting. Videos belonging to trashed assets are left alone, since those assets can still be restored.
 
 If the uploader can't confirm in time that a folder is set up for Bunny Stream, it lets Craft handle the upload normally. The video still reaches Bunny via the fetch fallback, just without bypassing PHP's upload limits.

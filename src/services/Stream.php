@@ -172,6 +172,30 @@ class Stream extends Component
     }
 
     /**
+     * Returns every video in a library.
+     *
+     * @param VideoLibrary $library
+     * @return array[]|null Null if the library couldn't be listed
+     * @throws GuzzleException
+     */
+    public function getVideos(VideoLibrary $library): ?array
+    {
+        $videos = [];
+        $page = 1;
+
+        do {
+            $response = $this->_request($library, 'GET', "/library/$library->id/videos?page=$page&itemsPerPage=100");
+            $items = $response['items'] ?? [];
+            $videos = [...$videos, ...$items];
+            $page++;
+            // Bunny reports the total, so paging stops once everything is accounted for
+            $total = (int)($response['totalItems'] ?? count($videos));
+        } while (!empty($items) && count($videos) < $total);
+
+        return $videos;
+    }
+
+    /**
      * Deletes a video from Bunny.
      *
      * @param VideoLibrary $library
