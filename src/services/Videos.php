@@ -173,6 +173,29 @@ class Videos extends Component
     }
 
     /**
+     * Records that Bunny no longer has an asset's video.
+     *
+     * The row is kept rather than deleted, so the control panel can say what happened instead
+     * of the asset quietly reverting to looking like an ordinary video with no file.
+     *
+     * @param int $assetId
+     * @return bool
+     */
+    public function markVideoMissing(int $assetId): bool
+    {
+        $record = VideoRecord::findOne(['assetId' => $assetId]);
+        if (!$record) {
+            return false;
+        }
+        $record->status = VideoStatus::Missing->value;
+        if (!$record->save()) {
+            return false;
+        }
+        unset($this->_videosByAssetId[$assetId]);
+        return true;
+    }
+
+    /**
      * Deletes videos whose Craft asset has been purged.
      *
      * Trashing an asset leaves its video alone, since the asset can be restored. When garbage

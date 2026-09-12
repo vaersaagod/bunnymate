@@ -261,7 +261,7 @@ class BunnyMate extends Plugin
                     return;
                 }
                 $video = $this->getVideos()->getVideoForAsset($asset);
-                if (!$video) {
+                if (!$video || $video->getIsMissing()) {
                     return;
                 }
                 try {
@@ -579,7 +579,8 @@ class BunnyMate extends Plugin
                     return;
                 }
                 $video = $this->getVideos()->getVideoForAsset($asset);
-                if (!$video) {
+                if (!$video || $video->getIsMissing()) {
+                    // Nothing to show a poster or a spinner for; let Craft's icon stand
                     return;
                 }
                 if (!$video->getIsReady()) {
@@ -712,7 +713,7 @@ class BunnyMate extends Plugin
         }
 
         $video = $this->getVideos()->getVideoForAsset($element);
-        if (!$video) {
+        if (!$video || $video->getIsMissing()) {
             return $html;
         }
 

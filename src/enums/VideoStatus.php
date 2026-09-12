@@ -18,6 +18,12 @@ use Craft;
 enum VideoStatus: int
 {
 
+    /**
+     * Not one of Bunny's codes. Set when Bunny turns out to no longer have the video, which
+     * it never announces: deleting one in the dashboard fires no webhook.
+     */
+    case Missing = -1;
+
     case Queued = 0;
     case Processing = 1;
     case Encoding = 2;
@@ -59,9 +65,19 @@ enum VideoStatus: int
     public function isFailed(): bool
     {
         return match ($this) {
-            self::Failed, self::PresignedUploadFailed => true,
+            self::Failed, self::PresignedUploadFailed, self::Missing => true,
             default => false,
         };
+    }
+
+    /**
+     * Returns whether Bunny no longer has this video.
+     *
+     * @return bool
+     */
+    public function isMissing(): bool
+    {
+        return $this === self::Missing;
     }
 
     /**
@@ -105,6 +121,7 @@ enum VideoStatus: int
     public function label(): string
     {
         return match ($this) {
+            self::Missing => Craft::t('_bunnymate', 'Missing from Bunny'),
             self::Queued => Craft::t('_bunnymate', 'Queued'),
             self::Processing => Craft::t('_bunnymate', 'Processing'),
             self::Encoding => Craft::t('_bunnymate', 'Encoding'),

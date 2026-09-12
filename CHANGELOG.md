@@ -28,6 +28,7 @@
 - Added `asset.bunnyVideo.statusLabel`, which reports a video's state from its encoding progress rather than Bunny's status code.
 
 - Bunny videos are now deleted when Craft's garbage collection purges their trashed asset.
+- A video deleted on Bunny is now recognised when an asset is refreshed, and reported as missing rather than left looking playable.
 
 ### Changed
 - BunnyMate now requires PHP 8.3 or later.

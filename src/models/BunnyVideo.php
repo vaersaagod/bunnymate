@@ -20,6 +20,7 @@ use yii\base\InvalidConfigException;
  * @property-read VideoStatus $status
  * @property-read bool $isReady
  * @property-read bool $isFailed
+ * @property-read bool $isMissing
  * @property-read string|null $hlsUrl
  * @property-read string|null $thumbnailUrl
  * @property-read string|null $previewUrl
@@ -125,6 +126,16 @@ class BunnyVideo extends Model
         return $this->getEncodeProgress() >= 100
             ? Craft::t('_bunnymate', 'Ready')
             : Craft::t('_bunnymate', 'Playable');
+    }
+
+    /**
+     * Returns whether Bunny no longer has this video.
+     *
+     * @return bool
+     */
+    public function getIsMissing(): bool
+    {
+        return $this->getStatus()->isMissing();
     }
 
     /**

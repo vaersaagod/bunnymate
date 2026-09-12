@@ -63,7 +63,16 @@ class VideosController extends Controller
         $metadata = $stream->getVideo($library, $video->videoGuid);
 
         if ($metadata === null) {
-            return $this->asFailure(Craft::t('_bunnymate', 'Bunny doesn’t have a video with this ID any more.'));
+            // Bunny fires no webhook when a video is deleted, so this is the only way it
+            // surfaces. Record it, and hand back a panel that says so.
+            $videos->markVideoMissing($asset->id);
+            return $this->asSuccess(
+                Craft::t('_bunnymate', 'Bunny no longer has this video.'),
+                ['html' => BunnyMate::getInstance()->renderVideoPanel(
+                    Craft::$app->getAssets()->getAssetById($assetId),
+                    false,
+                )],
+            );
         }
 
         $videos->saveVideo(

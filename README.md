@@ -155,6 +155,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | Property | Notes |
 | --- | --- |
 | `isReady` / `isFailed` | Whether the video is playable, or failed to encode |
+| `isMissing` | Whether Bunny no longer has the video. See [Videos deleted on Bunny](#videos-deleted-on-bunny). |
 | `status` | The raw `VideoStatus` enum case from Bunny |
 | `statusLabel` | A readable state, derived from encoding progress. See [Video status](#video-status). |
 | `hlsUrl` | HLS playlist. Null until playable. |
@@ -171,6 +172,7 @@ Bunny reports a video's state as a numeric status, sent on the webhook and retur
 
 | Code | Case | Meaning |
 | --- | --- | --- |
+| -1 | `Missing` | Not one of Bunny's codes. Set when Bunny turns out to no longer have the video. |
 | 0 | `Queued` | Waiting to be encoded |
 | 1 | `Processing` | Working out preview and format details |
 | 2 | `Encoding` | Encoding |
@@ -288,6 +290,14 @@ If MuxMate is also installed, it claims the preview for every video asset whethe
 ### Non-video files
 
 Only video files are sent to Bunny Stream. An image, PDF or anything else uploaded to a mapped volume is stored in that volume exactly as it would be otherwise, with transforms and asset URLs untouched. On a volume using the Bunny Storage filesystem, that means it's served over the pull zone like any other file.
+
+### Videos deleted on Bunny
+
+Deleting a video in Bunny's dashboard fires no webhook, so Craft has no way to hear about it. Worse, the asset carries on looking fine for a while, because the CDN edge and any cached thumbnails still hold copies. Once those expire, every URL 404s.
+
+Pressing **Refresh from Bunny** on the asset finds out. When Bunny no longer has the video, the panel says **Missing from Bunny** and the asset stops pretending: `asset.bunnyVideo.isMissing` is true, `isReady` is false, the control panel thumbnail reverts to a file-type icon and `asset.url` stops returning a Bunny URL.
+
+The record is kept rather than dropped, so the asset says what happened instead of quietly looking like an ordinary video with no file. Re-uploading is the fix; there's nothing to recover, since Bunny held the only copy.
 
 ### Access control
 
