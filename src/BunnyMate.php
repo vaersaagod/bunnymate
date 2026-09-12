@@ -8,6 +8,7 @@ use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\base\Plugin;
 use craft\elements\Asset;
+use craft\events\AssetPreviewEvent;
 use craft\events\DefineAssetThumbUrlEvent;
 use craft\events\DefineAssetUrlEvent;
 use craft\events\DefineBehaviorsEvent;
@@ -27,6 +28,7 @@ use craft\services\Fs;
 use craft\web\UrlManager;
 use craft\web\View;
 
+use vaersaagod\bunnymate\assetpreviews\BunnyVideoPreview;
 use vaersaagod\bunnymate\behaviors\VideoAssetBehavior;
 use vaersaagod\bunnymate\fs\BunnyStorageFs;
 use vaersaagod\bunnymate\models\Settings;
@@ -104,6 +106,7 @@ class BunnyMate extends Plugin
         $this->_registerVideoPanel();
         $this->_registerVideoThumbs();
         $this->_registerVideoThumbBadge();
+        $this->_registerVideoPreview();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -762,6 +765,37 @@ class BunnyMate extends Plugin
             . '</svg>';
 
         return 'data:image/svg+xml;charset=utf-8,' . rawurlencode($svg);
+    }
+
+    /**
+     * Previews Bunny Stream videos with Bunny's player.
+     *
+     * Craft's own video preview points a <video> element at the asset URL, which for these is
+     * an HLS playlist most browsers won't play natively.
+     *
+     * Only videos with a playable Bunny video are claimed, so anything else keeps whatever
+     * handler it would otherwise get. Note that Craft takes the *last* handler to claim an
+     * asset, so a plugin that claims every video regardless will win over this one.
+     *
+     * @return void
+     */
+    private function _registerVideoPreview(): void
+    {
+        Event::on(
+            Assets::class,
+            Assets::EVENT_REGISTER_PREVIEW_HANDLER,
+            static function (AssetPreviewEvent $event) {
+                $asset = $event->asset;
+                if ($asset->kind !== Asset::KIND_VIDEO) {
+                    return;
+                }
+                $video = BunnyMate::getInstance()->getVideos()->getVideoForAsset($asset);
+                if (!$video || !$video->getIsReady()) {
+                    return;
+                }
+                $event->previewHandler = new BunnyVideoPreview($asset);
+            }
+        );
     }
 
 }

@@ -196,6 +196,10 @@ Without Imager, the poster frame is used as Bunny serves it. If you have Bunny O
 
 Video thumbnails are also marked with a play icon, since a poster frame is a still image and would otherwise be indistinguishable from a photo in an asset index. Videos with no Bunny video are left alone, since they already show a file-type icon.
 
+Previewing a video asset in the control panel opens Bunny's player, rather than Craft's default `<video>` element, which can't play an HLS playlist in most browsers.
+
+If MuxMate is also installed, it claims the preview for every video asset whether or not it has a Mux video, and Craft takes the last handler registered. Uninstall MuxMate, or guard its preview handler, or Bunny videos will preview as "No Mux playback ID".
+
 ### Non-video files
 
 Only video files are sent to Bunny Stream. An image, PDF or anything else uploaded to a mapped volume is stored in that volume exactly as it would be otherwise, with transforms and asset URLs untouched. On a volume using the Bunny Storage filesystem, that means it's served over the pull zone like any other file.
