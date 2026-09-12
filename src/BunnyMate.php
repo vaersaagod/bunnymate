@@ -4,12 +4,14 @@ namespace vaersaagod\bunnymate;
 
 use Craft;
 use craft\base\Element;
+use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\base\Plugin;
 use craft\elements\Asset;
 use craft\events\DefineAssetThumbUrlEvent;
 use craft\events\DefineAssetUrlEvent;
 use craft\events\DefineBehaviorsEvent;
+use craft\events\DefineElementHtmlEvent;
 use craft\events\DefineHtmlEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
@@ -101,6 +103,7 @@ class BunnyMate extends Plugin
         $this->_registerStreamUploader();
         $this->_registerVideoPanel();
         $this->_registerVideoThumbs();
+        $this->_registerVideoThumbBadge();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -645,6 +648,93 @@ class BunnyMate extends Plugin
             Craft::error($e->getMessage(), __METHOD__);
             return null;
         }
+    }
+
+    /**
+     * Marks video thumbnails in the control panel with a small "VIDEO" badge.
+     *
+     * Bunny's poster frame is a still image, so without this a video is indistinguishable from
+     * a photo in an asset index. Videos with no Bunny video already show a file-type icon,
+     * which is obvious enough on its own, so they're left alone.
+     *
+     * @return void
+     */
+    private function _registerVideoThumbBadge(): void
+    {
+        foreach ([Cp::EVENT_DEFINE_ELEMENT_CHIP_HTML, Cp::EVENT_DEFINE_ELEMENT_CARD_HTML] as $eventName) {
+            Event::on(
+                Cp::class,
+                $eventName,
+                function (DefineElementHtmlEvent $event) {
+                    $event->html = $this->_badgeVideoThumb($event->element, $event->html);
+                }
+            );
+        }
+    }
+
+    /**
+     * Adds the badge class to an element's thumbnail, if it's a playable Bunny video.
+     *
+     * @param ElementInterface $element
+     * @param string $html
+     * @return string
+     */
+    private function _badgeVideoThumb(ElementInterface $element, string $html): string
+    {
+        if (!$element instanceof Asset || $element->kind !== Asset::KIND_VIDEO) {
+            return $html;
+        }
+
+        // The badge doesn't fit on a small chip's thumbnail
+        if (preg_match('/\bclass="chip small\b/', $html)) {
+            return $html;
+        }
+
+        if (!$this->getVideos()->getVideoForAsset($element)?->getIsReady()) {
+            return $html;
+        }
+
+        $marked = str_replace(
+            '<div class="thumb"',
+            '<div class="thumb bunnymate-video-thumb"',
+            $html,
+        );
+
+        if ($marked === $html) {
+            // Craft's thumbnail markup changed; better no badge than mangled markup
+            return $html;
+        }
+
+        Craft::$app->getView()->registerCss($this->_videoThumbBadgeCss(), key: 'bunnymate-video-thumb');
+
+        return $marked;
+    }
+
+    /**
+     * Returns the CSS for the video thumbnail badge.
+     *
+     * @return string
+     */
+    private function _videoThumbBadgeCss(): string
+    {
+        return <<<CSS
+            .thumb.bunnymate-video-thumb::after {
+                content: "VIDEO";
+                position: absolute;
+                inset-block-start: 50%;
+                inset-inline-start: 50%;
+                transform: translate(-50%, -50%);
+                background-color: rgba(0, 0, 0, 0.65);
+                color: #fff;
+                font-size: 9px;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                line-height: 1.7;
+                padding-inline: 4px;
+                border-radius: var(--small-border-radius);
+                pointer-events: none;
+            }
+            CSS;
     }
 
 }

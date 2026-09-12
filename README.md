@@ -194,6 +194,8 @@ Imager downloads over curl, which sends no referrer, and Bunny libraries block r
 
 Without Imager, the poster frame is used as Bunny serves it. If you have Bunny Optimizer enabled on the pull zone, set `optimizerEnabled` to `true` on the library config and BunnyMate will ask Bunny for the size Craft wanted.
 
+Video thumbnails also carry a small **VIDEO** badge, since a poster frame is a still image and would otherwise be indistinguishable from a photo in an asset index. It's left off small chips, where it wouldn't fit, and off videos with no Bunny video, which already show a file-type icon.
+
 ### Non-video files
 
 Only video files are sent to Bunny Stream. An image, PDF or anything else uploaded to a mapped volume is stored in that volume exactly as it would be otherwise, with transforms and asset URLs untouched. On a volume using the Bunny Storage filesystem, that means it's served over the pull zone like any other file.
