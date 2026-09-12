@@ -164,7 +164,8 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `previewUrl` | Animated WebP preview |
 | `embedUrl(params)` | Bunny's iframe player URL |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
-| `availableResolutions` | Every rendition Bunny encoded, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
+| `availableResolutions` | Every rendition Bunny encoded for HLS, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
+| `availableMp4Resolutions` | Those an MP4 exists for, which is a subset. See [Renditions](#renditions). |
 
 ### Video status
 
@@ -218,7 +219,13 @@ Three things about these are worth knowing, because none of them are obvious fro
 
 Bunny only encodes up to the source resolution, so renditions are per video: a 720p upload never has a 1080p rendition, and two videos in the same library can offer different sets. `availableResolutions` is what Bunny actually produced, ascending.
 
-`mp4Url()` and `videoUrlRendition` both consult that list, so neither ever returns a URL that 404s. A rendition that wasn't produced falls back to the closest one below it, or to the lowest available if the request was below everything on offer:
+**`availableResolutions` describes the HLS renditions, not the MP4 ones.** Bunny's MP4 fallback stops short of what it encodes for HLS: a video listing renditions up to 2160p may only have MP4s up to 1080p, and `play_2160p.mp4` then returns a 404. Nothing in the API says where the cut is, so the library's `mp4MaxRendition` setting decides it, defaulting to `1080p`:
+
+```php
+'mp4MaxRendition' => '1080p',
+```
+
+`mp4Url()` and `videoUrlRendition` resolve against that capped list. A rendition that isn't in it falls back to the closest one below, or to the lowest available if the request was below everything on offer:
 
 | Available | Asked for | Returns |
 | --- | --- | --- |
@@ -227,7 +234,9 @@ Bunny only encodes up to the source resolution, so renditions are per video: a 7
 | `240p,360p,720p` | `1080p` | `720p` |
 | `720p,1080p` | `240p` | `720p` |
 
-`mp4Url()` returns null only when a video has no MP4 renditions at all, which means MP4 fallback is off for the library.
+`mp4Url()` returns null only when a video has no MP4 renditions at all, which means MP4 fallback is off for the library, or every rendition it encoded is above `mp4MaxRendition`.
+
+Use `availableMp4Resolutions` when you need the renditions an MP4 actually exists for, and `availableResolutions` for what Bunny encoded.
 
 ### Asset URLs
 

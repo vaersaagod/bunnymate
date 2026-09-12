@@ -49,6 +49,16 @@ class VideoLibrary extends Model
     public int $signedUrlDuration = 3600;
 
     /**
+     * @var string The highest rendition Bunny produces an MP4 for.
+     *
+     * Bunny's MP4 fallback doesn't cover every rendition it encodes: a library listing
+     * resolutions up to 2160p will still only have MP4s up to 1080p, and asking for
+     * `play_2160p.mp4` returns a 404. The video's `availableResolutions` describes the HLS
+     * renditions, so it can't be trusted for MP4 URLs on its own.
+     */
+    public string $mp4MaxRendition = '1080p';
+
+    /**
      * @var bool Whether Bunny Optimizer is enabled on this library's pull zone.
      *
      * Optimizer is what resizes images from the URL. With it off, `?width=` is ignored and

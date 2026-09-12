@@ -168,9 +168,10 @@ class BunnyVideo extends Model
      * Requires MP4 fallback to be enabled on the library. With no resolution given, the highest
      * available one is used.
      *
-     * A requested resolution that Bunny didn't produce falls back to the closest one below it,
-     * or to the lowest available if the request was below everything on offer. Bunny's list of
-     * available resolutions is what's consulted, so this never returns a URL that would 404.
+     * Only renditions an MP4 exists for are considered, which is not the same as the ones Bunny
+     * encoded. See [[getAvailableMp4Resolutions()]]. A requested resolution that isn't among
+     * them falls back to the closest one below it, or to the lowest available if the request
+     * was below everything on offer.
      *
      * @param string|null $resolution e.g. `720p`
      * @return string|null Null only if the video has no MP4 renditions at all
@@ -182,8 +183,7 @@ class BunnyVideo extends Model
             return null;
         }
 
-        $available = $this->getAvailableResolutions();
-        if (empty($available)) {
+        if (empty($this->getAvailableMp4Resolutions())) {
             return null;
         }
 
@@ -200,7 +200,7 @@ class BunnyVideo extends Model
      */
     public function resolveRendition(?string $resolution): string
     {
-        $available = $this->getAvailableResolutions();
+        $available = $this->getAvailableMp4Resolutions();
 
         // No preference, or one that was actually encoded
         if ($resolution === null) {
@@ -276,6 +276,26 @@ class BunnyVideo extends Model
     public function getEmbedUrl(array $params = []): string
     {
         return $this->getLibrary()->getEmbedUrl($this->videoGuid, $params);
+    }
+
+    /**
+     * Returns the resolutions an MP4 actually exists for, ascending.
+     *
+     * Bunny's MP4 fallback doesn't cover everything it encodes: a video with HLS renditions up
+     * to 2160p may only have MP4s up to 1080p, and the API reports nothing about where the cut
+     * is, so the library's `mp4MaxRendition` is what decides it.
+     *
+     * @return string[]
+     * @throws InvalidConfigException
+     */
+    public function getAvailableMp4Resolutions(): array
+    {
+        $max = (int)$this->getLibrary()->mp4MaxRendition;
+
+        return array_values(array_filter(
+            $this->getAvailableResolutions(),
+            static fn(string $r): bool => (int)$r <= $max,
+        ));
     }
 
     /**

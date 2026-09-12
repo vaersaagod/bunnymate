@@ -23,6 +23,9 @@ return [
         //    'hostname' => 'vz-xxxxxxxx-xxx.b-cdn.net',
         //    // Only needed if the library's pull zone has token authentication enabled
         //    'tokenAuthKey' => '$BUNNY_STREAM_TOKEN_KEY',
+        //    // The highest rendition Bunny makes an MP4 for. Its MP4 fallback stops short of
+        //    // the resolutions it encodes for HLS, and the API doesn't say where.
+        //    'mp4MaxRendition' => '1080p',
         //    // Set to true if Bunny Optimizer is enabled on the library's pull zone, so
         //    // control panel thumbnails can be resized rather than served full size
         //    'optimizerEnabled' => false,
