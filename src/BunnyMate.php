@@ -468,10 +468,12 @@ class BunnyMate extends Plugin
             Craft::t('_bunnymate', 'Dimensions') => $video->getWidth() && $video->getHeight()
                 ? sprintf('%d &times; %d', $video->getWidth(), $video->getHeight())
                 : null,
+            // A single text node on purpose: `.meta > .field > .input` is a flex container,
+            // so whitespace between sibling elements is dropped rather than rendered
             Craft::t('_bunnymate', 'Renditions') => !empty($resolutions)
-                ? Html::tag('span', Html::encode(end($resolutions)), [
-                    'title' => implode(', ', $resolutions),
-                ]) . ' ' . Html::tag('span', sprintf('(%d)', count($resolutions)), ['class' => 'light'])
+                ? Html::encode(Craft::t('_bunnymate', 'up to {resolution}', [
+                    'resolution' => end($resolutions),
+                ]))
                 : null,
             Craft::t('_bunnymate', 'Video ID') => Html::tag('code', Html::encode($video->videoGuid), [
                 'style' => 'font-size: 0.8em; word-break: break-all;',

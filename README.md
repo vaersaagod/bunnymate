@@ -151,7 +151,8 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `thumbnailUrl` | Poster frame. Available before encoding finishes. |
 | `previewUrl` | Animated WebP preview |
 | `embedUrl(params)` | Bunny's iframe player URL |
-| `width`, `height`, `length`, `encodeProgress`, `availableResolutions` | Metadata from Bunny |
+| `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
+| `availableResolutions` | Every rendition Bunny encoded, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
 
 ### Asset URLs
 
