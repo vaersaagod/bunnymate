@@ -31,6 +31,7 @@
 - Added `asset.bunnyVideo.downloadUrl`, which serves the original as a download under its original filename, and the `allowOriginalDownloads` setting governing it on the front end. The asset edit screen uses it.
 - Added `asset.bunnyVideo.statusLabel`, which reports a video's state from its encoding progress rather than Bunny's status code.
 - Added `asset.getBunnyVideoTag()`, which renders a `<video>` element with an HLS source, an MP4 fallback and an aspect ratio. A poster frame is opt-in with `poster: true`. Lazyloading and hls.js are opt-out, and neither loads any JavaScript unless the tag needs it.
+- Fixed `minResolution` and `maxResolution` picking the wrong rendition for portrait video. The bounds were compared against each HLS level's height, but a rendition is named after its short side, so `maxResolution: '720p'` on a 9:16 video capped at 360p rather than 720p, and `minResolution` floored a step too low.
 - Added the `hlsJsUrl`, `lazyloadBunnyVideo`, `defaultMinResolution` and `defaultMaxResolution` settings, governing the rendered player.
 - `lazyload` now governs only whether the sources are held in `data-src`. hls.js is attached as the video approaches the viewport regardless, rather than on page load when the tag isn't lazyloaded.
 - hls.js is now used wherever it can run, rather than only where the browser reports no native HLS support. Chrome and Edge report `"maybe"` for HLS but can't decode it, so they previously got neither native playback nor hls.js, and fell back to the capped MP4 rendition.

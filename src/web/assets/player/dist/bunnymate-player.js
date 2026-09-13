@@ -68,9 +68,23 @@
     return hlsPromise;
   }
 
-  function heightAttr(video, name) {
+  function resAttr(video, name) {
     var value = parseInt(video.getAttribute(name), 10);
     return isNaN(value) || value <= 0 ? null : value;
+  }
+
+  /**
+   * Returns the number a rendition is named after.
+   *
+   * "720p" counts the short side, not the height -- for a portrait video that's the width.
+   * Comparing heights instead caps a 9:16 video two renditions too low, because its 720p
+   * rendition is 720x1280 and its height clears any ceiling meant for 720.
+   */
+  function shortSide(level) {
+    if (level.width && level.height) {
+      return Math.min(level.width, level.height);
+    }
+    return level.height || level.width || 0;
   }
 
   /**
@@ -80,17 +94,18 @@
    * and the floor is a bitrate, so both have to be worked out from the levels the manifest
    * actually turned out to have.
    */
-  function applyBounds(hls, Hls, minHeight, maxHeight) {
+  function applyBounds(hls, Hls, minRes, maxRes) {
     hls.on(Hls.Events.MANIFEST_PARSED, function () {
       var levels = hls.levels || [];
       if (!levels.length) {
         return;
       }
 
-      if (maxHeight) {
+      if (maxRes) {
         var ceiling = -1;
         levels.forEach(function (level, index) {
-          if (level.height && level.height <= maxHeight) {
+          var res = shortSide(level);
+          if (res && res <= maxRes) {
             ceiling = index;
           }
         });
@@ -100,10 +115,11 @@
         }
       }
 
-      if (minHeight) {
+      if (minRes) {
         var floor = null;
         levels.forEach(function (level, index) {
-          if (floor === null && level.height && level.height >= minHeight) {
+          var res = shortSide(level);
+          if (floor === null && res && res >= minRes) {
             floor = index;
           }
         });
@@ -152,8 +168,8 @@
         applyBounds(
           hls,
           Hls,
-          heightAttr(video, 'data-bunnymate-min-height'),
-          heightAttr(video, 'data-bunnymate-max-height')
+          resAttr(video, 'data-bunnymate-min-res'),
+          resAttr(video, 'data-bunnymate-max-res')
         );
         hls.loadSource(src);
         hls.attachMedia(video);

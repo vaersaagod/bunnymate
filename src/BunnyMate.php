@@ -973,14 +973,14 @@ class BunnyMate extends Plugin
             $attributes['data-bunnymate-hls'] = $settings->hlsJsUrl;
 
             // Bounds are meaningless without adaptive playback, so they ride along with it
-            $min = $this->_resolutionHeight($options['minResolution'] ?? $settings->defaultMinResolution);
-            $max = $this->_resolutionHeight($options['maxResolution'] ?? $settings->defaultMaxResolution);
+            $min = $this->_resolutionShortSide($options['minResolution'] ?? $settings->defaultMinResolution);
+            $max = $this->_resolutionShortSide($options['maxResolution'] ?? $settings->defaultMaxResolution);
 
             if ($min !== null) {
-                $attributes['data-bunnymate-min-height'] = $min;
+                $attributes['data-bunnymate-min-res'] = $min;
             }
             if ($max !== null) {
-                $attributes['data-bunnymate-max-height'] = $max;
+                $attributes['data-bunnymate-max-res'] = $max;
             }
         }
 
@@ -1013,7 +1013,7 @@ class BunnyMate extends Plugin
      * @param string|int|null $resolution e.g. `'720p'`
      * @return int|null
      */
-    private function _resolutionHeight(string|int|null $resolution): ?int
+    private function _resolutionShortSide(string|int|null $resolution): ?int
     {
         if ($resolution === null || $resolution === '') {
             return null;

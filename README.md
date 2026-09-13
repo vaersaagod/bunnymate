@@ -224,7 +224,7 @@ What comes out is a plain `<video>` with two sources — the HLS playlist and an
 | `hls` | `true` | Set to false to emit only the MP4 source, and skip the player script |
 | `lazyload` | `lazyloadBunnyVideo` (`true`) | Holds the sources in `data-src` until the element scrolls into view. See [Lazyloading](#lazyloading). |
 | `resolution` | `videoUrlRendition` | Which MP4 rendition to use as the fallback source |
-| `minResolution` / `maxResolution` | `defaultMinResolution` / `defaultMaxResolution` | Bounds on the levels hls.js may pick. Adaptive playback only, so they do nothing when `hls` is false. |
+| `minResolution` / `maxResolution` | `defaultMinResolution` / `defaultMaxResolution` | Bounds on the levels hls.js may pick, measured on the short side, so `'720p'` means 1280&times;720 or 720&times;1280 as the video requires. Adaptive playback only, so they do nothing when `hls` is false. |
 | `poster` | `false` | `true` for Bunny's poster frame, or a URL to use instead |
 | `controls`, `playsinline`, `preload`, `autoplay`, `muted`, `loop` | — | Passed through to the element |
 | `attributes` | — | Merged over everything above |
