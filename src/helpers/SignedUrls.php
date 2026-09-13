@@ -37,6 +37,12 @@ class SignedUrls
     /** Marks the matching expiry, which has to agree with the token it was signed alongside */
     public const KIND_EXPIRES = 'exp';
 
+    /** A CDN token, signed over the path it grants access to */
+    public const TYPE_CDN = 'cdn';
+
+    /** An embed view token, signed over a video GUID and digested differently */
+    public const TYPE_EMBED = 'embed';
+
     private const PREFIX = 'BMSIG';
 
     /** Matches a placeholder and captures its kind and payload */
@@ -70,12 +76,14 @@ class SignedUrls
      *
      * @param string $kind One of the `KIND_*` constants
      * @param string $libraryHandle
-     * @param string $signPath Path the token should cover
+     * @param string $subject What the token is signed over: a path for [[TYPE_CDN]], a video
+     *                         GUID for [[TYPE_EMBED]]
+     * @param string $type One of the `TYPE_*` constants
      * @return string
      */
-    public static function placeholder(string $kind, string $libraryHandle, string $signPath): string
+    public static function placeholder(string $kind, string $libraryHandle, string $subject, string $type = self::TYPE_CDN): string
     {
-        $payload = self::_encode(['h' => $libraryHandle, 'p' => $signPath]);
+        $payload = self::_encode(['h' => $libraryHandle, 'p' => $subject, 't' => $type]);
 
         return self::PREFIX . $kind . '.' . $payload . '.' . self::PREFIX;
     }
@@ -110,7 +118,8 @@ class SignedUrls
                     return '';
                 }
 
-                ['h' => $handle, 'p' => $signPath] = $data;
+                ['h' => $handle, 'p' => $subject] = $data;
+                $type = $data['t'] ?? self::TYPE_CDN;
 
                 try {
                     $library = BunnyMate::getInstance()->getStream()->getLibrary($handle);
@@ -121,9 +130,13 @@ class SignedUrls
 
                 $expires = $expiresByLibrary[$handle] ??= time() + $library->signedUrlDuration;
 
-                return $kind === self::KIND_EXPIRES
-                    ? (string)$expires
-                    : $library->getPlaybackToken($signPath, $expires);
+                if ($kind === self::KIND_EXPIRES) {
+                    return (string)$expires;
+                }
+
+                return $type === self::TYPE_EMBED
+                    ? $library->getPlayerToken($subject, $expires)
+                    : $library->getPlaybackToken($subject, $expires);
             },
             $content
         ) ?? $content;
@@ -146,7 +159,7 @@ class SignedUrls
 
     /**
      * @param string $payload
-     * @return array{h: string, p: string}|null
+     * @return array{h: string, p: string, t?: string}|null
      */
     private static function _decode(string $payload): ?array
     {

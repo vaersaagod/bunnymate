@@ -21,12 +21,12 @@ return [
         //    'apiKey' => '$BUNNY_STREAM_API_KEY',
         //    'readOnlyApiKey' => '$BUNNY_STREAM_READONLY_KEY',
         //    'hostname' => 'vz-xxxxxxxx-xxx.b-cdn.net',
-        //    // The pull zone's token authentication key, needed when "Token Authentication"
-        //    // is enabled on the library's pull zone. Every playback URL is then signed.
+        //    // The pull zone's security key, needed when "CDN token authentication" is
+        //    // enabled on the library. Every playback URL is then signed.
         //    'tokenAuthKey' => '$BUNNY_STREAM_TOKEN_KEY',
-        //    // Set to true when "Player Token Authentication" is enabled on the library.
-        //    // That's a separate switch from the pull zone's, guarding the iframe player
-        //    // rather than the playback files, and signed with the library's API key.
+        //    // Set to true when "Embed view token authentication" is enabled on the library.
+        //    // That's a separate switch, guarding the iframe player rather than the playback
+        //    // files. Signed differently, but with the same key, so tokenAuthKey is required.
         //    'playerTokenAuthEnabled' => false,
         //    // How long signed URLs stay valid. Any cache holding a page with signed URLs in
         //    // it that Craft doesn't render itself must expire well inside this.

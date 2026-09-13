@@ -53,10 +53,11 @@ class VideoLibrary extends Model
     /**
      * @var bool Whether the library has player token authentication enabled.
      *
-     * This is a different thing from the pull zone's token authentication, and Bunny exposes
-     * it as a separate switch: the pull zone's key guards the playback files, while this
-     * guards the iframe player at `iframe.mediadelivery.net`. They're enabled independently
-     * and signed with different keys, so both have to be configured to match Bunny.
+     * Bunny exposes this as a switch separate from CDN token authentication: that one guards
+     * the playback files, this one the iframe player at `iframe.mediadelivery.net`. They're
+     * enabled independently, and signed differently -- the player takes a hex digest over the
+     * video GUID where the CDN takes base64 over a path -- but both are keyed on the pull
+     * zone's security key, so this needs [[tokenAuthKey]] set either way.
      */
     public bool $playerTokenAuthEnabled = false;
 
@@ -100,6 +101,12 @@ class VideoLibrary extends Model
     {
         return array_merge(parent::defineRules(), [
             [['id', 'apiKey', 'readOnlyApiKey', 'hostname'], 'required'],
+            [
+                ['tokenAuthKey'],
+                'required',
+                'when' => static fn(self $model): bool => $model->playerTokenAuthEnabled,
+                'message' => 'tokenAuthKey is required when playerTokenAuthEnabled is on: the player token is signed with the pull zone\'s security key.',
+            ],
             [['signedUrlDuration'], 'integer', 'min' => 60],
         ]);
     }
@@ -159,9 +166,14 @@ class VideoLibrary extends Model
             return empty($params) ? $url : UrlHelper::urlWithParams($url, $params);
         }
 
-        // The player is served by Bunny, not by the library's pull zone, so the pull zone's
-        // token means nothing to it. It takes a library-level token instead, keyed on the
-        // library's own API key -- the same signature TUS uploads are authorised with.
+        if (SignedUrls::shouldDefer()) {
+            return UrlHelper::urlWithParams($url, [
+                ...$params,
+                'token' => SignedUrls::placeholder(SignedUrls::KIND_TOKEN, $this->handle, $videoGuid, SignedUrls::TYPE_EMBED),
+                'expires' => SignedUrls::placeholder(SignedUrls::KIND_EXPIRES, $this->handle, $videoGuid, SignedUrls::TYPE_EMBED),
+            ]);
+        }
+
         $expires = time() + $this->signedUrlDuration;
 
         return UrlHelper::urlWithParams($url, [
@@ -181,7 +193,10 @@ class VideoLibrary extends Model
      */
     public function getPlayerToken(string $videoGuid, int $expires): string
     {
-        return hash('sha256', $this->apiKey . $videoGuid . $expires);
+        // Hex SHA256 over the video GUID rather than a path, and unlike the CDN token it isn't
+        // base64'd. Both are keyed on the pull zone's security key even though this one guards
+        // the player -- verified against a library with embed view token authentication on.
+        return hash('sha256', $this->tokenAuthKey . $videoGuid . $expires);
     }
 
     /**
