@@ -28,9 +28,10 @@ return [
         //    // That's a separate switch, guarding the iframe player rather than the playback
         //    // files. Signed differently, but with the same key, so tokenAuthKey is required.
         //    'playerTokenAuthEnabled' => false,
-        //    // How long signed URLs stay valid. Any cache holding a page with signed URLs in
-        //    // it that Craft doesn't render itself must expire well inside this.
-        //    'signedUrlDuration' => 3600,
+        //    // How long signed URLs stay valid: a number of seconds, or a date interval
+        //    // string. Any cache holding a page with signed URLs in it that Craft doesn't
+        //    // render itself must expire well inside this.
+        //    'signedUrlDuration' => 'PT1H',
         //    // Set to true if Bunny Optimizer is enabled on the library's pull zone, so
         //    // control panel thumbnails can be resized rather than served full size
         //    'optimizerEnabled' => false,

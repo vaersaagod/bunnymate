@@ -4,9 +4,13 @@ namespace vaersaagod\bunnymate\models;
 
 use craft\base\Model;
 use craft\helpers\App;
+use craft\helpers\ConfigHelper;
+use craft\helpers\Json;
 use craft\helpers\UrlHelper;
 
 use vaersaagod\bunnymate\helpers\SignedUrls;
+
+use yii\base\InvalidConfigException;
 
 /**
  * A Bunny Stream video library, as configured in `config/bunnymate.php`.
@@ -47,8 +51,14 @@ class VideoLibrary extends Model
      */
     public ?string $tokenAuthKey = null;
 
-    /** @var int How long signed URLs should remain valid, in seconds */
-    public int $signedUrlDuration = 3600;
+    /**
+     * @var mixed How long signed URLs should remain valid.
+     *
+     * A number of seconds, or a date interval string such as `'PT1H'`, matching how Craft's
+     * own duration settings are written. Normalised to seconds in [[init()]], so everything
+     * downstream can treat it as an int.
+     */
+    public mixed $signedUrlDuration = 3600;
 
     /**
      * @var bool Whether the library has player token authentication enabled.
@@ -92,6 +102,28 @@ class VideoLibrary extends Model
         }
         // Normalize the hostname to a bare host, so URLs can be built predictably
         $this->hostname = rtrim(preg_replace('/^https?:\/\//', '', $this->hostname), '/');
+
+        // Seconds or a date interval string, as Craft's own duration settings take. Resolved
+        // here so the rest of the model, and the validator's minimum, deal only in seconds.
+        $duration = $this->signedUrlDuration;
+
+        // A config file or an env var readily yields "3600" rather than 3600, and Craft's
+        // helper only takes an int or an interval -- it would read the string as an interval
+        // and fail on something that was never wrong
+        if (is_string($duration) && is_numeric($duration)) {
+            $duration = (int)$duration;
+        }
+
+        try {
+            $this->signedUrlDuration = ConfigHelper::durationInSeconds($duration);
+        } catch (\Throwable $e) {
+            // A bad interval would otherwise surface as "must be an integer", which says
+            // nothing about what was actually wrong with it
+            throw new InvalidConfigException(
+                "Invalid signedUrlDuration for video library \"$this->handle\": " . Json::encode($duration) .
+                '. Expected a number of seconds, or a date interval string such as "PT1H".'
+            );
+        }
     }
 
     /**

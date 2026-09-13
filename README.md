@@ -531,7 +531,7 @@ With it off and nothing else configured, playback URLs are public to anyone hold
 
 #### Token authentication
 
-For real access control, enable **CDN token authentication** on the library and set `tokenAuthKey` to the pull zone's security key. BunnyMate then signs every playback URL with an expiring token, and `signedUrlDuration` controls how long each stays valid.
+For real access control, enable **CDN token authentication** on the library and set `tokenAuthKey` to the pull zone's security key. BunnyMate then signs every playback URL with an expiring token, and `signedUrlDuration` controls how long each stays valid — a number of seconds, or a date interval string like `'PT1H'`, whichever reads better.
 
 A token is the URL-safe base64 of `SHA256(securityKey + path + expires)`, and it covers exactly the path it was signed over. BunnyMate signs each URL as narrowly as it can: an MP4 rendition's token opens that rendition and nothing else.
 
