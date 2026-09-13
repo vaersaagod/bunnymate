@@ -54,14 +54,21 @@ class SignedUrls
     /**
      * Returns whether signing should be deferred to the response.
      *
-     * Only site requests: a control panel URL is never template-cached, and anything BunnyMate
-     * fetches itself -- the MP4 probe, the original-size HEAD, the download controller -- needs
-     * a token it can use immediately, not one that resolves later.
+     * Opt-in, via `deferSignedUrls`: deferral only pays for itself where Craft caches pages
+     * carrying signed URLs, and it has a sharp edge -- see the setting.
+     *
+     * Site requests only, even then. A control panel URL is never template-cached, and
+     * anything BunnyMate fetches itself -- the MP4 probe, the original-size HEAD, the download
+     * controller -- needs a token it can use immediately, not one that resolves later.
      *
      * @return bool
      */
     public static function shouldDefer(): bool
     {
+        if (!BunnyMate::getInstance()->getSettings()->deferSignedUrls) {
+            return false;
+        }
+
         $request = Craft::$app->getRequest();
 
         return $request instanceof WebRequest && $request->getIsSiteRequest();

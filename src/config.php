@@ -69,6 +69,12 @@ return [
     // Unrelated to hls.js, which is always attached on approach.
     'lazyloadBunnyVideo' => true,
 
+    // Whether to defer signing playback URLs until the response is prepared, so an expiring
+    // token is never written into a {% cache %} block. Only affects libraries with token
+    // authentication enabled. It substitutes the response body only, so a URL rendered into
+    // something that doesn't travel in the response -- an email, say -- keeps its placeholder.
+    'deferSignedUrls' => false,
+
     // Whether original files can be downloaded from the front end. Originals aren't capped the
     // way the MP4 renditions are, so this serves the full-resolution master to anyone who asks.
     'allowOriginalDownloads' => true,

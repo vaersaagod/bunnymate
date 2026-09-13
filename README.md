@@ -486,13 +486,15 @@ It's signed differently — a hex digest over the video GUID, where a CDN token 
 
 #### Signed URLs and caching
 
-A token carries an expiry, which puts signed URLs at odds with cached HTML: a token written into a `{% cache %}` block would outlive itself, and the page would serve 403s for the rest of the cache's life.
+A token carries an expiry, which puts signed URLs at odds with cached HTML: a token written into a `{% cache %}` block outlives itself, and the page then serves 403s for the rest of that cache's life.
 
-So BunnyMate doesn't sign at render time. On site requests it renders a placeholder and mints the real token as the response is prepared, after any template cache has been read from or written to. Caches therefore store the placeholder, and each visitor gets a token minted for them. This works through `json_encode` and HTML escaping too, so URLs carried inside a `data-sources` attribute are substituted like any other.
+Set `deferSignedUrls` to `true` and BunnyMate stops signing at render time. Site requests render a placeholder instead, and the real token is minted as the response is prepared — after any template cache has been read from or written to. Caches therefore store the placeholder, and each visitor gets a token minted for them. This holds through `json_encode` and HTML escaping, so URLs carried inside a `data-sources` attribute are substituted like any other, and it covers JSON responses as well as HTML.
 
-Anything BunnyMate fetches itself — the MP4 rendition probe, the original-size check, the download controller — signs immediately, as do control panel requests, which are never template-cached. `thumbnailUrl` also signs immediately, because it's routinely handed to a server-side transformer like Imager, which would otherwise fetch an unsigned placeholder.
+**It's off by default, because it only rewrites the response body.** A URL that is rendered but doesn't travel in the response keeps its placeholder and reaches its reader unusable — an email built from a template during a site request is the obvious case. Before turning it on, check where else signed URLs are rendered.
 
-The one case this can't cover is a page served without booting Craft at all: full static caching at the web server or a CDN. There's no response for BunnyMate to rewrite, so either keep that cache's lifetime well inside `signedUrlDuration`, or don't use token authentication on content served that way.
+Two things are unaffected either way. Anything BunnyMate fetches itself — the MP4 rendition probe, the original-size check, the download controller — signs immediately, as do control panel requests, which are never template-cached. `thumbnailUrl` also always signs immediately, because it's routinely handed to a server-side transformer like Imager, which would otherwise fetch an unsigned placeholder.
+
+And neither setting can help a page served without booting Craft at all: full static caching at the web server or a CDN. There's no response to rewrite, so such a cache has to expire well inside `signedUrlDuration`. Where a plugin caches the response itself, which of it and BunnyMate runs first decides whether the placeholder or the token gets stored — worth checking before relying on it.
 
 ### Placeholder files
 

@@ -135,6 +135,28 @@ class Settings extends Model
     public bool $lazyloadBunnyVideo = true;
 
     /**
+     * @var bool Whether to defer signing playback URLs until the response is prepared.
+     *
+     * Only relevant to libraries with token authentication enabled. A token carries an expiry,
+     * so one rendered into a `{% cache %}` block outlives itself and the page serves 403s for
+     * the rest of that cache's life. With this on, site requests render a placeholder and the
+     * real token is minted as the response goes out, so caches store the placeholder and each
+     * visitor gets a token of their own.
+     *
+     * Off by default, because it only substitutes the response body. A URL that is rendered
+     * but doesn't travel in the response -- an email body, say -- keeps its placeholder and
+     * reaches its reader unusable. Turn it on when pages carrying signed URLs are cached by
+     * Craft, and check what else those URLs are rendered into before you do.
+     *
+     * It can't help a page served without booting Craft at all, since there's no response to
+     * rewrite. Static caches holding signed URLs have to expire inside `signedUrlDuration`
+     * whatever this is set to.
+     *
+     * @since 2.1.0
+     */
+    public bool $deferSignedUrls = false;
+
+    /**
      * @var bool Whether original files can be downloaded from the front end.
      *
      * Originals aren't capped the way the MP4 renditions are, so this serves the
