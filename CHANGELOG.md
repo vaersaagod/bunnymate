@@ -2,6 +2,24 @@
 
 ## 3.0.0 - 2026-09-14
 
+> [!IMPORTANT]
+> **BunnyMate is no longer a [private](https://craftcms.com/docs/5.x/extend/plugin-guide.html#private-plugins) plugin, and its handle has changed from `_bunnymate` to `bunnymate`.**
+>
+> It's the same Composer package, so Composer upgrades it in place — there's nothing to remove or re-require. Craft is what cares: it keys installed plugins by handle, in the `plugins` table and in project config, and a changed handle reads to Craft as one plugin leaving and a different one arriving. So the old handle has to be uninstalled and the new one installed, at Craft's level only.
+>
+> ```
+> ddev craft plugin/uninstall _bunnymate
+> ddev composer require vaersaagod/bunnymate:^3.0
+> mv config/_bunnymate.php config/bunnymate.php
+> ddev craft plugin/install bunnymate
+> ```
+>
+> Do the uninstall first, so it runs against a plugin Craft can still load. If Composer gets there ahead of you, `plugin/uninstall _bunnymate --force` clears the stranded entry.
+>
+> Nothing is at risk on the way through. BunnyMate 2.x shipped no migrations and owned no database tables, so uninstalling it loses nothing beyond a row in the `plugins` table, and your settings carry over untouched — `pullingEnabled`, `pullZones` and `defaultPullZone` mean what they meant, `bunnyPullUrl()` is unchanged, and no template needs editing. Everything else in 3.0 is additive and dormant until configured.
+>
+> Both steps write to project config, so committing `project.yaml` carries the change to your other environments without further intervention. See [Migrating from BunnyMate 2.x](https://github.com/vaersaagod/bunnymate/blob/main/README.md#migrating-from-bunnymate-2x) for the detail.
+
 ### Added
 - Added a `Bunny Storage` filesystem type, for storing assets in a Bunny Edge Storage zone. Asset URLs are derived from the configured pull zone, so no separate Base URL is needed.
 - Added the `apiKey` setting, for purging the Bunny CDN cache.
