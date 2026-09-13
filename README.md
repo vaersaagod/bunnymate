@@ -451,6 +451,15 @@ So where [Imager X](https://imager-x.spacecat.ninja) is installed, BunnyMate res
 
 Imager downloads over curl, which sends no referrer, and Bunny libraries block referrer-less requests by default. BunnyMate passes the site's own URL as the referrer so this works either way.
 
+`transformDefaults` and `transformConfigOverrides` are handed to Imager's `transformImage()` as its third and fourth arguments:
+
+```php
+'transformDefaults' => ['format' => 'webp', 'quality' => 60],
+'transformConfigOverrides' => ['useRemoteUrlQueryString' => true],
+```
+
+Defaults sit *under* the transform BunnyMate builds, so the width and height Craft asked for always win — `mode`, which defaults to `crop`, along with `position`, `format`, `quality` and the rest are yours to set. Config overrides take precedence over BunnyMate's own, with one exception: `curlOptions` is merged key by key rather than replaced, so setting an unrelated curl option can't quietly drop the referrer and turn every thumbnail into a 403. Setting `CURLOPT_REFERER` yourself does replace it.
+
 Without Imager, the poster frame is used as Bunny serves it. If you have Bunny Optimizer enabled on the pull zone, set `optimizerEnabled` to `true` on the library config and BunnyMate will ask Bunny for the size Craft wanted.
 
 Video thumbnails are also marked with a play icon, since a poster frame is a still image and would otherwise be indistinguishable from a photo in an asset index. A video that's still encoding has no usable poster yet, so it gets a plain placeholder with a spinner over it rather than a file-type icon that gives no sign anything is happening. Videos with no Bunny video are left alone.

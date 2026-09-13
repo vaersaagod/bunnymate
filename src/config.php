@@ -82,6 +82,15 @@ return [
     // Whether to resize control panel thumbnails with Imager X, when it's installed
     'transformThumbnails' => true,
 
+    // Passed straight to Imager X's transformImage() when transforming a thumbnail:
+    // transformDefaults as its third argument, transformConfigOverrides as its fourth.
+    // Defaults sit under the transform BunnyMate builds, so the width and height Craft asked
+    // for always win, while `mode` (which defaults to 'crop'), `position`, `format`, `quality`
+    // and the rest are yours. Config overrides take precedence over BunnyMate's own, except
+    // that `curlOptions` merges key by key so the referrer Bunny requires isn't lost.
+    'transformDefaults' => null,
+    'transformConfigOverrides' => null,
+
     // Which MP4 rendition asset.url should point at, e.g. '1080p'. Null uses the highest one
     // Bunny produced. A video without that exact rendition falls back to the closest one below.
     'videoUrlRendition' => null,

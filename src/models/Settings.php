@@ -180,6 +180,34 @@ class Settings extends Model
     public bool $transformThumbnails = true;
 
     /**
+     * @var array|null Transform defaults passed to Imager X when transforming a thumbnail.
+     *
+     * Handed to `transformImage()` as its third argument, so these sit *under* the transform
+     * BunnyMate builds: the width and height Craft asked for always win, and everything else
+     * -- `mode`, `position`, `format`, `quality`, `effects` -- is yours to set. BunnyMate's own
+     * only default is `mode: crop`, which this can override.
+     *
+     * @since 3.0.0
+     */
+    public ?array $transformDefaults = null;
+
+    /**
+     * @var array|null Config overrides passed to Imager X when transforming a thumbnail.
+     *
+     * Handed to `transformImage()` as its fourth argument, and takes precedence over
+     * BunnyMate's own.
+     *
+     * The one thing BunnyMate sets here is a `curlOptions` referrer, because Bunny libraries
+     * reject referrer-less requests by default and Imager fetches over curl, which sends none.
+     * `curlOptions` is therefore merged key by key rather than replaced, so setting some other
+     * curl option doesn't quietly drop the referrer and leave every thumbnail a 403. Setting
+     * `CURLOPT_REFERER` yourself does replace it.
+     *
+     * @since 3.0.0
+     */
+    public ?array $transformConfigOverrides = null;
+
+    /**
      * @var string|null The MP4 rendition `asset.url` should point at, e.g. `'1080p'`.
      *
      * Null uses the highest rendition Bunny produced. A rendition that wasn't produced for a

@@ -664,18 +664,26 @@ class BunnyMate extends Plugin
             return $url;
         }
 
+        $settings = $this->getSettings();
+
+        // Defaults sit under the transform, so the size Craft asked for is never overridden,
+        // but `mode` and anything else are
+        $defaults = array_merge(['mode' => 'crop'], $settings->transformDefaults ?? []);
+
+        $configOverrides = $settings->transformConfigOverrides ?? [];
+
+        // Bunny libraries block requests without a referrer by default, and Imager downloads
+        // over curl, which sends none. Merged key by key rather than replaced: setting some
+        // unrelated curl option shouldn't quietly drop the referrer and 403 every thumbnail.
+        $configOverrides['curlOptions'] = ($configOverrides['curlOptions'] ?? []) + [
+            CURLOPT_REFERER => UrlHelper::baseSiteUrl(),
+        ];
+
         try {
             $transformed = $imager->transformImage($url, [
                 'width' => $width,
                 'height' => $height,
-                'mode' => 'crop',
-            ], null, [
-                // Bunny libraries block requests without a referrer by default, and Imager
-                // downloads over curl, which sends none
-                'curlOptions' => [
-                    CURLOPT_REFERER => UrlHelper::baseSiteUrl(),
-                ],
-            ]);
+            ], $defaults, $configOverrides);
         } catch (\Throwable $e) {
             Craft::error("Unable to transform \"$url\": {$e->getMessage()}", __METHOD__);
             return $url;
