@@ -22,10 +22,6 @@ Everything is configured in `config/bunnymate.php`, with every credential resolv
 
 This plugin requires Craft CMS 5.1.0 or later, and PHP 8.3 or later.
 
-## Disclaimer
-
-This is a [private plugin](https://craftcms.com/docs/5.x/extend/plugin-guide.html#private-plugins), made for Værsågod and friends.
-
 ## Migrating from BunnyMate 2.x
 
 BunnyMate 3.0 is no longer a private plugin: the handle changed from `_bunnymate` to `bunnymate`.
@@ -587,3 +583,13 @@ When Craft's garbage collection eventually purges it, the video is deleted too. 
 That distinction matters. A null row is definitely a purged asset's video, never a video someone uploaded through Bunny's dashboard, so nothing has to guess and nothing needs scheduling. A video that fails to delete keeps its row and is retried on the next run.
 
 If the uploader can't confirm in time that a folder is set up for Bunny Stream, it lets Craft handle the upload normally. The video still reaches Bunny via the fetch fallback, just without bypassing PHP's upload limits.
+
+## Price, license and support
+
+The plugin is released under the Craft license and could be subject to license fees.
+It's made for Værsågod and friends, and no support is given. Submitted issues are
+resolved if it scratches an itch.
+
+## Changelog
+
+See [CHANGELOG.MD](https://raw.githubusercontent.com/vaersaagod/bunnymate/master/CHANGELOG.md).
