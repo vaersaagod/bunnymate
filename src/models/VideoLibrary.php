@@ -49,6 +49,16 @@ class VideoLibrary extends Model
     public int $signedUrlDuration = 3600;
 
     /**
+     * @var bool Whether the library has player token authentication enabled.
+     *
+     * This is a different thing from the pull zone's token authentication, and Bunny exposes
+     * it as a separate switch: the pull zone's key guards the playback files, while this
+     * guards the iframe player at `iframe.mediadelivery.net`. They're enabled independently
+     * and signed with different keys, so both have to be configured to match Bunny.
+     */
+    public bool $playerTokenAuthEnabled = false;
+
+    /**
      * @var bool Whether Bunny Optimizer is enabled on this library's pull zone.
      *
      * Optimizer is what resizes images from the URL. With it off, `?width=` is ignored and
@@ -109,10 +119,17 @@ class VideoLibrary extends Model
      * @param string $file e.g. `playlist.m3u8`, `thumbnail.jpg`, `play_720p.mp4`
      * @return string
      */
-    public function getVideoUrl(string $videoGuid, string $file): string
+    public function getVideoUrl(string $videoGuid, string $file, bool $directory = false): string
     {
-        $url = "https://$this->hostname/$videoGuid/" . ltrim($file, '/');
-        return $this->signUrl($url, $videoGuid);
+        $path = "/$videoGuid/" . ltrim($file, '/');
+        $url = "https://$this->hostname$path";
+
+        // A token covers exactly the path it was signed over. HLS needs the whole video
+        // directory, because the master playlist points at per-rendition sub-playlists and
+        // those at segments, each fetched as its own request.
+        $signPath = $directory ? "/$videoGuid/" : $path;
+
+        return $this->signUrl($url, $signPath);
     }
 
     /**
@@ -135,35 +152,80 @@ class VideoLibrary extends Model
     public function getEmbedUrl(string $videoGuid, array $params = []): string
     {
         $url = "https://iframe.mediadelivery.net/embed/$this->id/$videoGuid";
-        if (!empty($params)) {
-            $url = UrlHelper::urlWithParams($url, $params);
+
+        if (!$this->playerTokenAuthEnabled) {
+            return empty($params) ? $url : UrlHelper::urlWithParams($url, $params);
         }
-        return $this->signUrl($url, $videoGuid);
+
+        // The player is served by Bunny, not by the library's pull zone, so the pull zone's
+        // token means nothing to it. It takes a library-level token instead, keyed on the
+        // library's own API key -- the same signature TUS uploads are authorised with.
+        $expires = time() + $this->signedUrlDuration;
+
+        return UrlHelper::urlWithParams($url, [
+            ...$params,
+            'token' => $this->getPlayerToken($videoGuid, $expires),
+            'expires' => $expires,
+        ]);
+    }
+
+    /**
+     * Returns the token the iframe player expects, for a library with player token
+     * authentication enabled.
+     *
+     * @param string $videoGuid
+     * @param int $expires UNIX timestamp
+     * @return string
+     */
+    public function getPlayerToken(string $videoGuid, int $expires): string
+    {
+        return hash('sha256', $this->apiKey . $videoGuid . $expires);
+    }
+
+    /**
+     * Returns the token a playback URL expects, for a pull zone with token authentication
+     * enabled.
+     *
+     * @param string $videoGuid
+     * @param int $expires UNIX timestamp
+     * @return string
+     */
+    public function getPlaybackToken(string $signPath, int $expires): string
+    {
+        // Bunny's CDN token authentication: the SHA256 of key + path + expiry, raw rather than
+        // hex, in URL-safe base64 with the padding dropped. Signing the video GUID instead of
+        // the path is rejected -- verified against a live token-authenticated pull zone.
+        $raw = hash('sha256', $this->tokenAuthKey . $signPath . $expires, true);
+
+        return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
     }
 
     /**
      * Signs a URL for a token-authenticated library, or returns it untouched if token
      * authentication isn't enabled.
      *
-     * Bunny expects `SHA256_HEX(tokenAuthKey + videoGuid + expires)`, with the hash and the
-     * expiry appended as `token` and `expires` query params.
+     * Bunny expects the URL-safe base64 of `SHA256_RAW(tokenAuthKey + signPath + expires)`,
+     * with the hash and the expiry appended as `token` and `expires` query params.
      *
-     * @see https://bunny.net/docs/stream/token-authentication/
+     * `$signPath` is what the resulting token grants access to: a file path covers that one
+     * file, and a path ending in a slash covers everything beneath it, nested paths included.
+     *
+     * @see https://bunny.net/docs/cdn/security/token-authentication/
      *
      * @param string $url
-     * @param string $videoGuid
+     * @param string $signPath Path the token should cover, e.g. `/{guid}/play_720p.mp4`
      * @param int|null $expires UNIX timestamp; defaults to now plus [[signedUrlDuration]]
      * @return string
      */
-    public function signUrl(string $url, string $videoGuid, ?int $expires = null): string
+    public function signUrl(string $url, string $signPath, ?int $expires = null): string
     {
         if (!$this->getIsTokenAuthEnabled()) {
             return $url;
         }
         $expires ??= time() + $this->signedUrlDuration;
-        $token = hash('sha256', $this->tokenAuthKey . $videoGuid . $expires);
+
         return UrlHelper::urlWithParams($url, [
-            'token' => $token,
+            'token' => $this->getPlaybackToken($signPath, $expires),
             'expires' => $expires,
         ]);
     }

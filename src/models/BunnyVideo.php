@@ -188,7 +188,9 @@ class BunnyVideo extends Model
         if (!$this->getIsReady()) {
             return null;
         }
-        return $this->getLibrary()->getVideoUrl($this->videoGuid, 'playlist.m3u8');
+        // Directory-scoped: the playlist only names sub-playlists and segments, each of
+        // which is fetched separately and needs to be covered by the same token
+        return $this->getLibrary()->getVideoUrl($this->videoGuid, 'playlist.m3u8', directory: true);
     }
 
     /**

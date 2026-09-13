@@ -21,8 +21,15 @@ return [
         //    'apiKey' => '$BUNNY_STREAM_API_KEY',
         //    'readOnlyApiKey' => '$BUNNY_STREAM_READONLY_KEY',
         //    'hostname' => 'vz-xxxxxxxx-xxx.b-cdn.net',
-        //    // Only needed if the library's pull zone has token authentication enabled
+        //    // The pull zone's token authentication key, needed when "CDN Token
+        //    // Authentication" is enabled on the library. Every playback URL is then signed.
         //    'tokenAuthKey' => '$BUNNY_STREAM_TOKEN_KEY',
+        //    // Set to true when "Embed View Token Authentication" is enabled on the library.
+        //    // That's a separate switch from the CDN one, guarding the iframe player rather
+        //    // than the playback files, and signed with the library's API key.
+        //    'playerTokenAuthEnabled' => false,
+        //    // How long signed URLs stay valid
+        //    'signedUrlDuration' => 3600,
         //    // Set to true if Bunny Optimizer is enabled on the library's pull zone, so
         //    // control panel thumbnails can be resized rather than served full size
         //    'optimizerEnabled' => false,

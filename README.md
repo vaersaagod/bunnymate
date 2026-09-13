@@ -466,9 +466,21 @@ New Bunny video libraries ship with **Block direct URL file access** enabled, wh
 
 This is hotlink protection, not access control. A `Referer` header is set by whoever makes the request, so anyone who wants the file can send one and get it. What the setting reliably does is break legitimate consumers that don't send a referrer: sites using `Referrer-Policy: no-referrer`, native apps, and any server-side fetch.
 
-If videos need to be genuinely protected, enable **token authentication** on the library's pull zone and set `tokenAuthKey` in the library's config. BunnyMate then signs every playback and embed URL with an expiring token, and `signedUrlDuration` controls how long each one is valid. That is a real access control; the referrer check is not.
+With it off and nothing else configured, playback URLs are public to anyone holding them. Video GUIDs are random UUIDs, so they aren't guessable, which is usually fine for non-sensitive content.
 
-With both off, playback URLs are public to anyone holding them. Video GUIDs are random UUIDs, so they aren't guessable, which is usually fine for non-sensitive content.
+#### Token authentication
+
+For real access control, enable **CDN Token Authentication** on the library and set `tokenAuthKey` to the pull zone's security key. BunnyMate then signs every playback URL with an expiring token, and `signedUrlDuration` controls how long each stays valid.
+
+A token is the URL-safe base64 of `SHA256(securityKey + path + expires)`, and it covers exactly the path it was signed over. BunnyMate signs each URL as narrowly as it can: an MP4 rendition's token opens that rendition and nothing else.
+
+HLS is the exception. A master playlist only names per-rendition sub-playlists, and those name segments, each fetched as its own request with no query string inherited from the manifest. So an HLS URL is signed over the video's directory instead, which Bunny extends to everything beneath it, nested paths included. BunnyMate's player then puts the same token back onto every request hls.js makes.
+
+**That makes an HLS token broader than it looks.** It opens every file for that video, the unencoded original among them. Where that matters, serve MP4 renditions rather than HLS, since their tokens are per-file.
+
+There's no equivalent of a signed claim either: a resolution cap is something the markup asks for, never something the CDN enforces.
+
+**Embed View Token Authentication** is a separate switch, guarding the iframe player at `iframe.mediadelivery.net` rather than the playback files, and signed with the library's API key instead of the pull zone's. Set `playerTokenAuthEnabled` to match it. The two are enabled independently; turning on one doesn't turn on the other.
 
 ### Placeholder files
 

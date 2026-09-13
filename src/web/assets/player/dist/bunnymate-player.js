@@ -134,7 +134,21 @@
           return;
         }
         var Hls = window.Hls;
-        var hls = new Hls({ capLevelToPlayerSize: true });
+        var config = { capLevelToPlayerSize: true };
+
+        // A token-authenticated playlist is only half the story: hls.js resolves the
+        // sub-playlists and segments it names against the manifest URL, and a query string
+        // isn't inherited, so every one of those requests would arrive unsigned and be
+        // rejected. Bunny's token covers the whole video directory, so the same query works
+        // for all of them -- it just has to be put back on by hand.
+        var query = src.indexOf('?') !== -1 ? src.slice(src.indexOf('?') + 1) : '';
+        if (query) {
+          config.xhrSetup = function (xhr, requestUrl) {
+            xhr.open('GET', requestUrl + (requestUrl.indexOf('?') === -1 ? '?' : '&') + query, true);
+          };
+        }
+
+        var hls = new Hls(config);
         applyBounds(
           hls,
           Hls,
