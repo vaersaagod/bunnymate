@@ -1,13 +1,12 @@
 # BunnyMate Changelog
 
-## 3.0.0 - Unreleased
+## 3.0.0 - 2026-09-14
 
 ### Added
 - Added a `Bunny Storage` filesystem type, for storing assets in a Bunny Edge Storage zone. Asset URLs are derived from the configured pull zone, so no separate Base URL is needed.
 - Added the `apiKey` setting, for purging the Bunny CDN cache.
 - Added the `purgeEnabled` setting.
 - Changed files are now purged from the CDN cache when assets on a Bunny Storage filesystem are added, replaced, copied, moved or deleted.
-
 - Added Bunny Stream support: video libraries can be mapped to volumes, and video assets are backed by Bunny Stream videos.
 - Added the `bunnymate/webhook` endpoint, which keeps video status in sync with Bunny. Payloads are verified with HMAC-SHA256.
 - Added `asset.bunnyVideo`, exposing playback, thumbnail and embed URLs, encoding status and video metadata.
@@ -47,7 +46,6 @@
 - Uninstalling now warns about the videos it leaves behind, counting them per library. Uninstalling drops the videos table and nothing else, so the videos stay on Bunny and the GUIDs identifying them are lost with the table.
 - Added the `bunnymate/videos/create-missing` console command, which creates Bunny Stream videos for video assets in mapped volumes that don't have one yet. Auto-upload only catches videos as they arrive and deliberately ignores resaves, so this is what covers a volume that already held videos when it was mapped. Takes `--volume`, `--limit` and `--dry-run`.
 - Added a `bunnyVideo()` parameter to asset queries, so `craft.assets.bunnyVideo('ready').all()` returns Bunny Stream videos without fetching every asset and filtering in Twig. Takes `true`, `false`, `'ready'`, `'encoding'`, `'failed'`, `'missing'`, or specific statuses.
-
 - Bunny videos are now deleted when Craft's garbage collection purges their trashed asset.
 - A video deleted on Bunny is now recognised when an asset is refreshed, and reported as missing rather than left looking playable.
 
