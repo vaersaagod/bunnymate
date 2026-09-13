@@ -592,4 +592,4 @@ resolved if it scratches an itch.
 
 ## Changelog
 
-See [CHANGELOG.MD](https://raw.githubusercontent.com/vaersaagod/bunnymate/master/CHANGELOG.md).
+See [CHANGELOG.md](https://github.com/vaersaagod/bunnymate/blob/main/CHANGELOG.md).
