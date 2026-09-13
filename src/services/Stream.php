@@ -81,6 +81,23 @@ class Stream extends Component
     }
 
     /**
+     * Returns a library by its Bunny library ID, or throws if it isn't configured.
+     *
+     * Videos record the library they live in by ID, so a row whose library has been dropped
+     * from the config can't be acted on at all -- its URLs can't be signed and its video can't
+     * be deleted from Bunny. Saying which ID is missing is the only useful thing left to do.
+     *
+     * @param string|int $libraryId
+     * @return VideoLibrary
+     * @throws InvalidConfigException if no configured library has that ID
+     */
+    public function requireLibraryById(string|int $libraryId): VideoLibrary
+    {
+        return $this->getLibraryById($libraryId)
+            ?? throw new InvalidConfigException("No video library is configured with the ID \"$libraryId\".");
+    }
+
+    /**
      * Returns a library by its Bunny library ID.
      *
      * Used to resolve incoming webhooks, which identify the library by ID rather than handle.

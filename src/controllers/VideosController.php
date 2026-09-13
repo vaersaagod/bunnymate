@@ -59,7 +59,7 @@ class VideosController extends Controller
         }
 
         $stream = $plugin->getStream();
-        $library = $stream->getLibrary($video->libraryHandle);
+        $library = $video->getLibrary();
         $metadata = $stream->getVideo($library, $video->videoGuid);
 
         if ($metadata === null) {
@@ -77,7 +77,7 @@ class VideosController extends Controller
 
         $videos->saveVideo(
             $asset->id,
-            $video->libraryHandle,
+            $library->handle,
             $video->videoGuid,
             VideoStatus::tryFrom((int)($metadata['status'] ?? 0)),
             $metadata,

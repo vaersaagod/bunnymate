@@ -201,13 +201,13 @@ class UploadController extends Controller
         }
 
         $stream = BunnyMate::getInstance()->getStream();
-        $library = $stream->getLibrary($video->libraryHandle);
+        $library = $video->getLibrary();
         $metadata = $stream->getVideo($library, $video->videoGuid);
 
         if ($metadata !== null) {
             $videos->saveVideo(
                 $asset->id,
-                $video->libraryHandle,
+                $library->handle,
                 $video->videoGuid,
                 VideoStatus::tryFrom((int)($metadata['status'] ?? 0)),
                 $metadata,

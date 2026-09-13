@@ -19,6 +19,7 @@ use yii\base\InvalidConfigException;
  * This is what `asset.bunnyVideo` returns.
  *
  * @property-read VideoLibrary $library
+ * @property-read string $libraryHandle
  * @property-read VideoStatus $status
  * @property-read bool $isReady
  * @property-read bool $isFailed
@@ -66,8 +67,14 @@ class BunnyVideo extends Model
     /** @var int|null The ID of the Craft asset this video belongs to */
     public ?int $assetId = null;
 
-    /** @var string The handle of the video library this video lives in */
-    public string $libraryHandle = '';
+    /**
+     * @var string The Bunny ID of the video library this video lives in.
+     *
+     * Recorded by ID rather than by config handle, because the handle is a local naming
+     * choice: renaming it would strand the row, and an orphaned row that can't resolve its
+     * library can never have its video deleted from Bunny.
+     */
+    public string $libraryId = '';
 
     /** @var string The video's GUID in Bunny Stream */
     public string $videoGuid = '';
@@ -111,9 +118,22 @@ class BunnyVideo extends Model
     public function getLibrary(): VideoLibrary
     {
         if (!isset($this->_library)) {
-            $this->_library = BunnyMate::getInstance()->getStream()->getLibrary($this->libraryHandle);
+            $this->_library = BunnyMate::getInstance()->getStream()->requireLibraryById($this->libraryId);
         }
         return $this->_library;
+    }
+
+    /**
+     * Returns the handle of the library this video lives in.
+     *
+     * Derived rather than stored, so a library renamed in config is still resolved correctly.
+     *
+     * @return string
+     * @throws InvalidConfigException if the library isn't configured
+     */
+    public function getLibraryHandle(): string
+    {
+        return $this->getLibrary()->handle;
     }
 
     /**

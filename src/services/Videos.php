@@ -91,7 +91,10 @@ class Videos extends Component
         $record = VideoRecord::findOne(['assetId' => $assetId]) ?? new VideoRecord([
             'assetId' => $assetId,
         ]);
-        $record->library = $libraryHandle;
+        // Stored by ID rather than by handle: the handle is a local config key, and renaming
+        // it would strand every row -- including orphans, whose Bunny videos could then never
+        // be deleted. The ID is what the video actually belongs to.
+        $record->library = (string)BunnyMate::getInstance()->getStream()->getLibrary($libraryHandle)->id;
         $record->videoGuid = $videoGuid;
         if ($status !== null) {
             $record->status = $status->value;
@@ -144,11 +147,21 @@ class Videos extends Component
             return false;
         }
 
+        $stream = BunnyMate::getInstance()->getStream();
+
+        try {
+            $library = $stream->requireLibraryById($record->library);
+        } catch (InvalidConfigException $e) {
+            // Nothing can be done with a video whose library is no longer configured, and the
+            // save below would fail on the same lookup
+            Craft::error("Ignoring webhook for video \"$videoGuid\": {$e->getMessage()}", __METHOD__);
+            return false;
+        }
+
         // Pull the full video model down, so metadata stays in step with the status
         $metadata = null;
         try {
-            $stream = BunnyMate::getInstance()->getStream();
-            $metadata = $stream->getVideo($stream->getLibrary($record->library), $videoGuid);
+            $metadata = $stream->getVideo($library, $videoGuid);
         } catch (\Throwable $e) {
             Craft::error("Unable to refresh metadata for video \"$videoGuid\": {$e->getMessage()}", __METHOD__);
         }
@@ -158,7 +171,7 @@ class Videos extends Component
         // copies dimensions and size onto the asset
         return $this->saveVideo(
             $record->assetId,
-            $record->library,
+            $library->handle,
             $videoGuid,
             $status->isLifecycle() ? $status : null,
             $metadata,
@@ -182,7 +195,7 @@ class Videos extends Component
         if ($deleteRemote) {
             try {
                 $stream = BunnyMate::getInstance()->getStream();
-                $stream->deleteVideo($stream->getLibrary($record->library), $record->videoGuid);
+                $stream->deleteVideo($stream->requireLibraryById($record->library), $record->videoGuid);
             } catch (InvalidConfigException $e) {
                 Craft::error("Unable to delete remote video \"$record->videoGuid\": {$e->getMessage()}", __METHOD__);
             }
@@ -238,7 +251,7 @@ class Videos extends Component
 
         foreach ($records as $record) {
             try {
-                $library = $stream->getLibrary($record->library);
+                $library = $stream->requireLibraryById($record->library);
             } catch (InvalidConfigException $e) {
                 Craft::error("Unable to delete orphaned video \"$record->videoGuid\": {$e->getMessage()}", __METHOD__);
                 continue;
@@ -388,7 +401,7 @@ class Videos extends Component
     {
         return new BunnyVideo([
             'assetId' => $record->assetId,
-            'libraryHandle' => $record->library,
+            'libraryId' => $record->library,
             'videoGuid' => $record->videoGuid,
             'statusCode' => $record->status,
             'metadata' => $record->metadata,

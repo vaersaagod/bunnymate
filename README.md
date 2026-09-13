@@ -198,6 +198,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `downloadUrl` | The same file, served as a download with its original filename |
 | `originalFilename` | What the file was uploaded as, before being renamed to `.mp4` |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
+| `library` / `libraryHandle` | The library the video lives in. Recorded by Bunny ID, so renaming a handle in `videoLibraries` doesn't strand existing videos. |
 | `availableResolutions` | Every rendition Bunny encoded for HLS, ascending, e.g. `['240p', '360p', …]`. The sidebar panel only shows the highest. |
 | `availableMp4Resolutions` | Those an MP4 actually exists for, measured rather than assumed. See [Renditions](#renditions). |
 
