@@ -7,6 +7,7 @@ use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\base\Plugin;
+use craft\console\Request as ConsoleRequest;
 use craft\db\Query;
 use craft\elements\Asset;
 use craft\elements\db\AssetQuery;
@@ -21,6 +22,7 @@ use craft\events\DefineHtmlEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\ReplaceAssetEvent;
+use craft\helpers\Console;
 use craft\helpers\Cp;
 use craft\helpers\ElementHelper;
 use craft\helpers\Html;
@@ -37,6 +39,7 @@ use craft\web\View;
 
 use vaersaagod\bunnymate\assetpreviews\BunnyVideoPreview;
 use vaersaagod\bunnymate\behaviors\VideoAssetBehavior;
+use vaersaagod\bunnymate\db\Table;
 use vaersaagod\bunnymate\behaviors\VideoAssetQueryBehavior;
 use vaersaagod\bunnymate\fs\BunnyStorageFs;
 use vaersaagod\bunnymate\helpers\SignedUrls;
@@ -129,6 +132,59 @@ class BunnyMate extends Plugin
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
         });
+    }
+
+    /**
+     * Warns about the videos an uninstall is about to leave behind.
+     *
+     * Uninstalling drops the videos table and nothing else: the videos stay on Bunny, encoded
+     * and billed, and the GUIDs that identified them go with the table. That's the right
+     * default -- a local uninstall shouldn't destroy remote content there's no getting back --
+     * but it's worth saying out loud at the moment it happens rather than only in the README.
+     *
+     * Deliberately never throws. Failing here would abort an uninstall over a warning.
+     *
+     * @return void
+     */
+    protected function beforeUninstall(): void
+    {
+        try {
+            if (!Craft::$app->getDb()->tableExists(Table::VIDEOS)) {
+                return;
+            }
+
+            $counts = (new Query())
+                ->select(['library', 'total' => 'COUNT(*)'])
+                ->from(Table::VIDEOS)
+                ->groupBy(['library'])
+                ->pairs();
+
+            if (empty($counts)) {
+                return;
+            }
+
+            $stream = $this->getStream();
+            $parts = [];
+
+            foreach ($counts as $libraryId => $total) {
+                $handle = $stream->getLibraryById($libraryId)?->handle;
+                $parts[] = "$total in library " . ($handle !== null ? "\"$handle\" ($libraryId)" : $libraryId);
+            }
+
+            $message = 'Uninstalling BunnyMate leaves ' . array_sum($counts) . ' video(s) on Bunny Stream: '
+                . implode(', ', $parts) . '. They are not deleted, and the GUIDs identifying them are dropped '
+                . 'with the videos table -- on Bunny they are identifiable by title alone. Reinstalling will not '
+                . 'reconnect them.';
+
+            Craft::warning($message, __METHOD__);
+
+            $request = Craft::$app->getRequest();
+            if ($request instanceof ConsoleRequest) {
+                Console::stderr(PHP_EOL . Console::ansiFormat("Warning: $message" . PHP_EOL, [Console::FG_YELLOW]));
+            }
+        } catch (\Throwable $e) {
+            Craft::error($e->getMessage(), __METHOD__);
+        }
     }
 
     /**

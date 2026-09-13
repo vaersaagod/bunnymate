@@ -526,7 +526,7 @@ The record is kept rather than dropped, so the asset says what happened instead 
 
 Uninstalling BunnyMate drops the `bunnymate_videos` table and nothing else. **The videos stay on Bunny**, encoded and billed as before.
 
-That's deliberate — a local uninstall shouldn't destroy remote content you're paying for, and there'd be no getting it back — but it leaves three things worth knowing.
+That's deliberate — a local uninstall shouldn't destroy remote content you're paying for, and there'd be no getting it back. BunnyMate says so before it happens, logging a warning that counts the videos it's about to leave behind and in which libraries, and printing it too when the uninstall runs from the console. Three things follow.
 
 The mapping is gone. Every video GUID lived only in that table. On Bunny the videos are identifiable by title alone, which is the asset's filename as it stood when the video was created, so anything renamed since carries its old name. Nothing on Bunny records which asset a video belonged to.
 
