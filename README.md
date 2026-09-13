@@ -470,7 +470,7 @@ With it off and nothing else configured, playback URLs are public to anyone hold
 
 #### Token authentication
 
-For real access control, enable **CDN Token Authentication** on the library and set `tokenAuthKey` to the pull zone's security key. BunnyMate then signs every playback URL with an expiring token, and `signedUrlDuration` controls how long each stays valid.
+For real access control, enable **Token Authentication** on the library's pull zone and set `tokenAuthKey` to its security key. BunnyMate then signs every playback URL with an expiring token, and `signedUrlDuration` controls how long each stays valid.
 
 A token is the URL-safe base64 of `SHA256(securityKey + path + expires)`, and it covers exactly the path it was signed over. BunnyMate signs each URL as narrowly as it can: an MP4 rendition's token opens that rendition and nothing else.
 
@@ -480,7 +480,17 @@ HLS is the exception. A master playlist only names per-rendition sub-playlists, 
 
 There's no equivalent of a signed claim either: a resolution cap is something the markup asks for, never something the CDN enforces.
 
-**Embed View Token Authentication** is a separate switch, guarding the iframe player at `iframe.mediadelivery.net` rather than the playback files, and signed with the library's API key instead of the pull zone's. Set `playerTokenAuthEnabled` to match it. The two are enabled independently; turning on one doesn't turn on the other.
+The library's **Player Token Authentication** is a separate switch, guarding the iframe player at `iframe.mediadelivery.net` rather than the playback files, and signed with the library's API key instead of the pull zone's. Set `playerTokenAuthEnabled` to match it. The two are enabled independently; turning on one doesn't turn on the other.
+
+#### Signed URLs and caching
+
+A token carries an expiry, which puts signed URLs at odds with cached HTML: a token written into a `{% cache %}` block would outlive itself, and the page would serve 403s for the rest of the cache's life.
+
+So BunnyMate doesn't sign at render time. On site requests it renders a placeholder and mints the real token as the response is prepared, after any template cache has been read from or written to. Caches therefore store the placeholder, and each visitor gets a token minted for them. This works through `json_encode` and HTML escaping too, so URLs carried inside a `data-sources` attribute are substituted like any other.
+
+Anything BunnyMate fetches itself — the MP4 rendition probe, the original-size check, the download controller — signs immediately, as do control panel requests, which are never template-cached. `thumbnailUrl` also signs immediately, because it's routinely handed to a server-side transformer like Imager, which would otherwise fetch an unsigned placeholder.
+
+The one case this can't cover is a page served without booting Craft at all: full static caching at the web server or a CDN. There's no response for BunnyMate to rewrite, so either keep that cache's lifetime well inside `signedUrlDuration`, or don't use token authentication on content served that way.
 
 ### Placeholder files
 

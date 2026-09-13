@@ -6,6 +6,8 @@ use craft\base\Model;
 use craft\helpers\App;
 use craft\helpers\UrlHelper;
 
+use vaersaagod\bunnymate\helpers\SignedUrls;
+
 /**
  * A Bunny Stream video library, as configured in `config/_bunnymate.php`.
  *
@@ -119,7 +121,7 @@ class VideoLibrary extends Model
      * @param string $file e.g. `playlist.m3u8`, `thumbnail.jpg`, `play_720p.mp4`
      * @return string
      */
-    public function getVideoUrl(string $videoGuid, string $file, bool $directory = false): string
+    public function getVideoUrl(string $videoGuid, string $file, bool $defer = false, bool $directory = false): string
     {
         $path = "/$videoGuid/" . ltrim($file, '/');
         $url = "https://$this->hostname$path";
@@ -129,7 +131,7 @@ class VideoLibrary extends Model
         // those at segments, each fetched as its own request.
         $signPath = $directory ? "/$videoGuid/" : $path;
 
-        return $this->signUrl($url, $signPath);
+        return $this->signUrl($url, $signPath, defer: $defer);
     }
 
     /**
@@ -217,11 +219,20 @@ class VideoLibrary extends Model
      * @param int|null $expires UNIX timestamp; defaults to now plus [[signedUrlDuration]]
      * @return string
      */
-    public function signUrl(string $url, string $signPath, ?int $expires = null): string
+    public function signUrl(string $url, string $signPath, ?int $expires = null, bool $defer = false): string
     {
         if (!$this->getIsTokenAuthEnabled()) {
             return $url;
         }
+        // Signing now would bake an expiry into whatever cache this ends up in, so on site
+        // requests the real token is minted as the response goes out instead
+        if ($defer && $expires === null && SignedUrls::shouldDefer()) {
+            return UrlHelper::urlWithParams($url, [
+                'token' => SignedUrls::placeholder(SignedUrls::KIND_TOKEN, $this->handle, $signPath),
+                'expires' => SignedUrls::placeholder(SignedUrls::KIND_EXPIRES, $this->handle, $signPath),
+            ]);
+        }
+
         $expires ??= time() + $this->signedUrlDuration;
 
         return UrlHelper::urlWithParams($url, [

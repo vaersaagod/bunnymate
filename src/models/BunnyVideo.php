@@ -190,7 +190,7 @@ class BunnyVideo extends Model
         }
         // Directory-scoped: the playlist only names sub-playlists and segments, each of
         // which is fetched separately and needs to be covered by the same token
-        return $this->getLibrary()->getVideoUrl($this->videoGuid, 'playlist.m3u8', directory: true);
+        return $this->getLibrary()->getVideoUrl($this->videoGuid, 'playlist.m3u8', defer: true, directory: true);
     }
 
     /**
@@ -220,7 +220,7 @@ class BunnyVideo extends Model
 
         $resolution = $this->resolveRendition($resolution);
 
-        return $this->getLibrary()->getVideoUrl($this->videoGuid, "play_$resolution.mp4");
+        return $this->getLibrary()->getVideoUrl($this->videoGuid, "play_$resolution.mp4", defer: true);
     }
 
     /**
@@ -342,6 +342,9 @@ class BunnyVideo extends Model
             $filename .= '?' . http_build_query($params);
         }
 
+        // Not deferred: a thumbnail URL is routinely handed to a server-side transformer --
+        // Imager fetches it, transforms it and serves a local copy -- and a placeholder would
+        // reach Bunny unsigned
         return $library->getVideoUrl($this->videoGuid, $filename);
     }
 
@@ -373,6 +376,7 @@ class BunnyVideo extends Model
         if (!$this->getHasOriginal()) {
             return null;
         }
+        // Not deferred: the download controller fetches this itself, server-side
         return $this->getLibrary()->getVideoUrl($this->videoGuid, 'original');
     }
 
@@ -447,7 +451,7 @@ class BunnyVideo extends Model
         if (!$this->getIsReady()) {
             return null;
         }
-        return $this->getLibrary()->getVideoUrl($this->videoGuid, 'preview.webp');
+        return $this->getLibrary()->getVideoUrl($this->videoGuid, 'preview.webp', defer: true);
     }
 
     /**

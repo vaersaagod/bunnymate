@@ -32,12 +32,14 @@ use craft\services\Assets;
 use craft\services\Fs;
 use craft\services\Gc;
 use craft\web\UrlManager;
+use craft\web\Response;
 use craft\web\View;
 
 use vaersaagod\bunnymate\assetpreviews\BunnyVideoPreview;
 use vaersaagod\bunnymate\behaviors\VideoAssetBehavior;
 use vaersaagod\bunnymate\behaviors\VideoAssetQueryBehavior;
 use vaersaagod\bunnymate\fs\BunnyStorageFs;
+use vaersaagod\bunnymate\helpers\SignedUrls;
 use vaersaagod\bunnymate\models\BunnyVideo;
 use vaersaagod\bunnymate\models\Settings;
 use vaersaagod\bunnymate\queue\jobs\UploadVideo;
@@ -55,6 +57,7 @@ use yii\base\InvalidConfigException;
 use Twig\Markup;
 
 use yii\base\ModelEvent;
+use yii\web\Response as YiiResponse;
 
 /**
  * BunnyMate plugin
@@ -121,6 +124,7 @@ class BunnyMate extends Plugin
         $this->_registerVideoPreview();
         $this->_registerGarbageCollection();
         $this->_registerVideoQueries();
+        $this->_registerDeferredSigning();
 
         Craft::$app->onInit(static function () {
             Craft::$app->getView()->registerTwigExtension(new BunnyMateExtension());
@@ -1012,6 +1016,42 @@ class BunnyMate extends Plugin
         return $height > 0 ? $height : null;
     }
 
+
+    /**
+     * Mints deferred playback tokens as the response goes out.
+     *
+     * Signing at render time would bake an expiry into any template cache the URL lands in,
+     * and the page would serve 403s for as long as that cache outlived the token. Site
+     * requests therefore render a placeholder, and the real token is substituted here --
+     * after `{% cache %}` has done its work either way.
+     *
+     * This runs on the response body as a whole rather than on the markup BunnyMate renders,
+     * because a URL can travel a long way from the tag that produced it: through `json_encode`
+     * into a `data-sources` attribute, or into a JSON response entirely.
+     *
+     * The one thing it can't reach is a page served without booting Craft at all -- full
+     * static caching at the web server or CDN. Those need their own cache lifetime kept under
+     * `signedUrlDuration`, or signing left on at render time.
+     *
+     * @return void
+     */
+    private function _registerDeferredSigning(): void
+    {
+        Event::on(
+            Response::class,
+            YiiResponse::EVENT_AFTER_PREPARE,
+            static function (Event $event) {
+                /** @var Response $response */
+                $response = $event->sender;
+
+                if (!is_string($response->content) || $response->content === '') {
+                    return;
+                }
+
+                $response->content = SignedUrls::substitute($response->content);
+            }
+        );
+    }
 
     /**
      * Adds a `bunnyVideo()` parameter to asset queries.
