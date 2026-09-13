@@ -224,7 +224,7 @@ What comes out is a plain `<video>` with two sources — the HLS playlist and an
 | `hls` | `true` | Set to false to emit only the MP4 source, and skip the player script |
 | `lazyload` | `lazyloadBunnyVideo` (`true`) | Holds the sources in `data-src` until the element scrolls into view. See [Lazyloading](#lazyloading). |
 | `resolution` | `videoUrlRendition` | Which MP4 rendition to use as the fallback source |
-| `minResolution` / `maxResolution` | `defaultMinResolution` / `defaultMaxResolution` | Bounds on the levels hls.js may pick, measured on the short side, so `'720p'` means 1280&times;720 or 720&times;1280 as the video requires. Adaptive playback only, so they do nothing when `hls` is false. |
+| `minResolution` / `maxResolution` | `defaultMinResolution` / `defaultMaxResolution` | Bounds on the levels hls.js may pick, measured on the short side, so `'720p'` means 1280&times;720 or 720&times;1280 as the video requires. Adaptive playback only: they do nothing when `hls` is false, or on a browser without Media Source Extensions, where HLS plays natively and there's no hls.js to cap. |
 | `poster` | `false` | `true` for Bunny's poster frame, or a URL to use instead |
 | `controls`, `playsinline`, `preload`, `autoplay`, `muted`, `loop` | — | Passed through to the element |
 | `attributes` | — | Merged over everything above |
@@ -521,6 +521,18 @@ Deleting a video in Bunny's dashboard fires no webhook, so Craft has no way to h
 Pressing **Refresh from Bunny** on the asset finds out. When Bunny no longer has the video, the panel says **Missing from Bunny** and the asset stops pretending: `asset.bunnyVideo.isMissing` is true, `isReady` is false, the control panel thumbnail reverts to a file-type icon and `asset.url` stops returning a Bunny URL.
 
 The record is kept rather than dropped, so the asset says what happened instead of quietly looking like an ordinary video with no file. Re-uploading is the fix; there's nothing to recover, since Bunny held the only copy.
+
+### Uninstalling
+
+Uninstalling BunnyMate drops the `bunnymate_videos` table and nothing else. **The videos stay on Bunny**, encoded and billed as before.
+
+That's deliberate — a local uninstall shouldn't destroy remote content you're paying for, and there'd be no getting it back — but it leaves three things worth knowing.
+
+The mapping is gone. Every video GUID lived only in that table. On Bunny the videos are identifiable by title alone, which is the asset's filename as it stood when the video was created, so anything renamed since carries its old name. Nothing on Bunny records which asset a video belonged to.
+
+Reinstalling doesn't reconnect them. You get an empty table and assets that look like they've never been to Bunny, so [`create-missing`](#videos-that-were-already-there) would upload every one of them a second time — double the storage, with the originals orphaned and hard to tell from the new copies. If you expect to reinstall, keep a dump of the table.
+
+Nothing prunes them afterwards. Orphan collection works from rows in that table, so once it's gone the videos can only be cleared out from Bunny's dashboard.
 
 ### Access control
 
