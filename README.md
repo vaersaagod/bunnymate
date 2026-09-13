@@ -413,6 +413,28 @@ Replacing a video's file deletes the old Bunny video and sends the new file up i
 
 Set `autoUploadVideos` to `false` to turn this off and rely on the uploader alone.
 
+#### Videos that were already there
+
+Auto-upload only catches videos as they arrive. Mapping a volume that already holds videos sends none of them anywhere, and a resave won't either — the handler skips resaves on purpose, so an unrelated `resave/assets` can't push a whole volume to Bunny by accident.
+
+For the back catalogue, there's a command:
+
+```
+php craft bunnymate/videos/create-missing
+```
+
+It finds video assets in mapped volumes with no Bunny video, reports what it found per volume, and asks before queuing anything. Assets that already have a video are skipped, so it's safe to re-run and safe to interrupt.
+
+| Option | |
+| --- | --- |
+| `--volume` | Only this volume. Must be one that's mapped to a library. |
+| `--limit` | Stop after this many assets, for working through a large volume in batches |
+| `--dry-run` | Report what would be queued, and queue nothing |
+
+Bunny fetches each file over HTTP from the asset's own URL, so **this has to run where those URLs are publicly reachable**. A local environment won't do, however correctly it's configured. The command checks a sample URL per volume up front and warns if it looks local, rather than letting a few hundred jobs fail one at a time.
+
+Encoding progress arrives on the webhook as usual, so that needs to be reachable too, or the videos will sit at *Queued* until something refreshes them.
+
 ### The Bunny Stream panel
 
 Video assets backed by Bunny Stream get a **Bunny Stream** panel in their edit screen sidebar, showing encoding status, available resolutions, dimensions, duration and the video's GUID.
