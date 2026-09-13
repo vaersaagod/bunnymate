@@ -38,7 +38,7 @@
     "developer": "Værsågod",
     "developerUrl": "https://vaersaagod.no",
     "documentationUrl": "https://github.com/vaersaagod/bunnymate/blob/main/README.md",
-    "changelogUrl": "https://raw.githubusercontent.com/vaersaagod/bunny/main/CHANGELOG.md",
+    "changelogUrl": "https://raw.githubusercontent.com/vaersaagod/bunnymate/main/CHANGELOG.md",
     "class": "vaersaagod\\bunnymate\\BunnyMate"
   }
 }
