@@ -48,7 +48,7 @@
       this.$button.addClass('disabled').attr('disabled', 'disabled');
       this.$spinner.removeClass('hidden');
 
-      Craft.sendActionRequest('POST', '_bunnymate/videos/refresh', {
+      Craft.sendActionRequest('POST', 'bunnymate/videos/refresh', {
         data: {assetId: this.assetId},
       })
         .then(function (response) {
@@ -57,13 +57,13 @@
           }
           Craft.cp.displayNotice(
             (response.data && response.data.message) ||
-              Craft.t('_bunnymate', 'Video refreshed.')
+              Craft.t('bunnymate', 'Video refreshed.')
           );
         })
         .catch(function (error) {
           Craft.cp.displayError(
             (error.response && error.response.data && error.response.data.message) ||
-              Craft.t('_bunnymate', 'Couldn’t refresh the video.')
+              Craft.t('bunnymate', 'Couldn’t refresh the video.')
           );
           self.$button.removeClass('disabled').removeAttr('disabled');
           self.$spinner.addClass('hidden');

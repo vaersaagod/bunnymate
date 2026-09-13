@@ -67,7 +67,7 @@ class VideosController extends Controller
             // surfaces. Record it, and hand back a panel that says so.
             $videos->markVideoMissing($asset->id);
             return $this->asSuccess(
-                Craft::t('_bunnymate', 'Bunny no longer has this video.'),
+                Craft::t('bunnymate', 'Bunny no longer has this video.'),
                 ['html' => BunnyMate::getInstance()->renderVideoPanel(
                     Craft::$app->getAssets()->getAssetById($assetId),
                     false,
@@ -87,7 +87,7 @@ class VideosController extends Controller
         $fresh = Craft::$app->getAssets()->getAssetById($assetId);
 
         return $this->asSuccess(
-            Craft::t('_bunnymate', 'Video refreshed.'),
+            Craft::t('bunnymate', 'Video refreshed.'),
             [
                 'html' => BunnyMate::getInstance()->renderVideoPanel($fresh, false),
             ],

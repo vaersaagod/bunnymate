@@ -133,7 +133,7 @@
 
       this._folderInfoPromises[key] = Craft.sendActionRequest(
         'GET',
-        '_bunnymate/upload/folder-info',
+        'bunnymate/upload/folder-info',
         {params: params}
       )
         .then(function (response) {
@@ -204,7 +204,7 @@
       // preparing already created
       var credentials = null;
 
-      Craft.sendActionRequest('POST', '_bunnymate/upload/prepare', {
+      Craft.sendActionRequest('POST', 'bunnymate/upload/prepare', {
         data: $.extend({filename: file.name}, this.targetParams()),
       })
         .then(function (response) {
@@ -226,7 +226,7 @@
             file,
             (error.response && error.response.data && error.response.data.message) ||
               (error && error.message) ||
-              Craft.t('_bunnymate', 'Couldn’t start the upload.')
+              Craft.t('bunnymate', 'Couldn’t start the upload.')
           );
         });
     },
@@ -267,7 +267,7 @@
         },
         onError: function (error) {
           self.abortUpload(credentials.assetId);
-          self.failUpload(file, error.message || Craft.t('_bunnymate', 'Upload failed.'));
+          self.failUpload(file, error.message || Craft.t('bunnymate', 'Upload failed.'));
         },
       });
 
@@ -287,7 +287,7 @@
     finishUpload: function (credentials) {
       var self = this;
 
-      Craft.sendActionRequest('POST', '_bunnymate/upload/complete', {
+      Craft.sendActionRequest('POST', 'bunnymate/upload/complete', {
         data: {assetId: credentials.assetId},
       })
         .catch(function () {
@@ -334,7 +334,7 @@
       if (!assetId) {
         return;
       }
-      Craft.sendActionRequest('POST', '_bunnymate/upload/abort', {
+      Craft.sendActionRequest('POST', 'bunnymate/upload/abort', {
         data: {assetId: assetId},
       }).catch(function () {
         // Nothing useful to do here

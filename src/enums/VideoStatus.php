@@ -121,18 +121,18 @@ enum VideoStatus: int
     public function label(): string
     {
         return match ($this) {
-            self::Missing => Craft::t('_bunnymate', 'Missing from Bunny'),
-            self::Queued => Craft::t('_bunnymate', 'Queued'),
-            self::Processing => Craft::t('_bunnymate', 'Processing'),
-            self::Encoding => Craft::t('_bunnymate', 'Encoding'),
-            self::Finished => Craft::t('_bunnymate', 'Ready'),
-            self::ResolutionFinished => Craft::t('_bunnymate', 'Playable'),
-            self::Failed => Craft::t('_bunnymate', 'Failed'),
-            self::PresignedUploadStarted => Craft::t('_bunnymate', 'Upload started'),
-            self::PresignedUploadFinished => Craft::t('_bunnymate', 'Upload finished'),
-            self::PresignedUploadFailed => Craft::t('_bunnymate', 'Upload failed'),
-            self::CaptionsGenerated => Craft::t('_bunnymate', 'Captions generated'),
-            self::TitleOrDescriptionGenerated => Craft::t('_bunnymate', 'Metadata generated'),
+            self::Missing => Craft::t('bunnymate', 'Missing from Bunny'),
+            self::Queued => Craft::t('bunnymate', 'Queued'),
+            self::Processing => Craft::t('bunnymate', 'Processing'),
+            self::Encoding => Craft::t('bunnymate', 'Encoding'),
+            self::Finished => Craft::t('bunnymate', 'Ready'),
+            self::ResolutionFinished => Craft::t('bunnymate', 'Playable'),
+            self::Failed => Craft::t('bunnymate', 'Failed'),
+            self::PresignedUploadStarted => Craft::t('bunnymate', 'Upload started'),
+            self::PresignedUploadFinished => Craft::t('bunnymate', 'Upload finished'),
+            self::PresignedUploadFailed => Craft::t('bunnymate', 'Upload failed'),
+            self::CaptionsGenerated => Craft::t('bunnymate', 'Captions generated'),
+            self::TitleOrDescriptionGenerated => Craft::t('bunnymate', 'Metadata generated'),
         };
     }
 

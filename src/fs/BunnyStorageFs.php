@@ -24,7 +24,7 @@ use yii\base\InvalidConfigException;
  * Bunny Storage filesystem.
  *
  * Files are stored in a Bunny Edge Storage zone, and served over the BunnyMate pull zone
- * that fronts it. The pull zone is configured in `config/_bunnymate.php` rather than on the
+ * that fronts it. The pull zone is configured in `config/bunnymate.php` rather than on the
  * filesystem itself, so that one hostname is shared with `bunnyPullUrl()`.
  *
  * @property-read string|null $settingsHtml
@@ -93,15 +93,15 @@ class BunnyStorageFs extends FlysystemFs
     public static function regionOptions(): array
     {
         return [
-            ['label' => Craft::t('_bunnymate', 'Falkenstein, DE (default)'), 'value' => BunnyCDNRegion::FALKENSTEIN],
-            ['label' => Craft::t('_bunnymate', 'Stockholm, SE'), 'value' => BunnyCDNRegion::STOCKHOLM],
-            ['label' => Craft::t('_bunnymate', 'United Kingdom'), 'value' => BunnyCDNRegion::UNITED_KINGDOM],
-            ['label' => Craft::t('_bunnymate', 'New York, US'), 'value' => BunnyCDNRegion::NEW_YORK],
-            ['label' => Craft::t('_bunnymate', 'Los Angeles, US'), 'value' => BunnyCDNRegion::LOS_ANGELES],
-            ['label' => Craft::t('_bunnymate', 'Singapore'), 'value' => BunnyCDNRegion::SINGAPORE],
-            ['label' => Craft::t('_bunnymate', 'Sydney, AU'), 'value' => BunnyCDNRegion::SYDNEY],
-            ['label' => Craft::t('_bunnymate', 'São Paulo, BR'), 'value' => BunnyCDNRegion::BRAZIL],
-            ['label' => Craft::t('_bunnymate', 'Johannesburg, ZA'), 'value' => BunnyCDNRegion::JOHANNESBURG],
+            ['label' => Craft::t('bunnymate', 'Falkenstein, DE (default)'), 'value' => BunnyCDNRegion::FALKENSTEIN],
+            ['label' => Craft::t('bunnymate', 'Stockholm, SE'), 'value' => BunnyCDNRegion::STOCKHOLM],
+            ['label' => Craft::t('bunnymate', 'United Kingdom'), 'value' => BunnyCDNRegion::UNITED_KINGDOM],
+            ['label' => Craft::t('bunnymate', 'New York, US'), 'value' => BunnyCDNRegion::NEW_YORK],
+            ['label' => Craft::t('bunnymate', 'Los Angeles, US'), 'value' => BunnyCDNRegion::LOS_ANGELES],
+            ['label' => Craft::t('bunnymate', 'Singapore'), 'value' => BunnyCDNRegion::SINGAPORE],
+            ['label' => Craft::t('bunnymate', 'Sydney, AU'), 'value' => BunnyCDNRegion::SYDNEY],
+            ['label' => Craft::t('bunnymate', 'São Paulo, BR'), 'value' => BunnyCDNRegion::BRAZIL],
+            ['label' => Craft::t('bunnymate', 'Johannesburg, ZA'), 'value' => BunnyCDNRegion::JOHANNESBURG],
         ];
     }
 
@@ -147,11 +147,11 @@ class BunnyStorageFs extends FlysystemFs
     public function attributeLabels(): array
     {
         return array_merge(parent::attributeLabels(), [
-            'accessKey' => Craft::t('_bunnymate', 'Access Key'),
-            'pullZone' => Craft::t('_bunnymate', 'Pull Zone'),
-            'region' => Craft::t('_bunnymate', 'Region'),
-            'storageZone' => Craft::t('_bunnymate', 'Storage Zone'),
-            'subfolder' => Craft::t('_bunnymate', 'Subfolder'),
+            'accessKey' => Craft::t('bunnymate', 'Access Key'),
+            'pullZone' => Craft::t('bunnymate', 'Pull Zone'),
+            'region' => Craft::t('bunnymate', 'Region'),
+            'storageZone' => Craft::t('bunnymate', 'Storage Zone'),
+            'subfolder' => Craft::t('bunnymate', 'Subfolder'),
         ]);
     }
 
@@ -225,7 +225,7 @@ class BunnyStorageFs extends FlysystemFs
      */
     public function getSettingsHtml(): ?string
     {
-        return Craft::$app->getView()->renderTemplate('_bunnymate/fsSettings', [
+        return Craft::$app->getView()->renderTemplate('bunnymate/fsSettings', [
             'fs' => $this,
             'pullZoneOptions' => static::pullZoneOptions(),
             'regionOptions' => static::regionOptions(),

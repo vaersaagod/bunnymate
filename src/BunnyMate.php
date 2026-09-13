@@ -76,7 +76,7 @@ class BunnyMate extends Plugin
     // =========================================================================
 
     /** @var string */
-    public string $schemaVersion = '1.2.0';
+    public string $schemaVersion = '3.0.0';
 
     /** @var bool */
     public bool $hasCpSettings = false;
@@ -243,7 +243,7 @@ class BunnyMate extends Plugin
             UrlManager::class,
             UrlManager::EVENT_REGISTER_SITE_URL_RULES,
             static function (RegisterUrlRulesEvent $event) {
-                $event->rules['bunnymate/webhook'] = '_bunnymate/webhook';
+                $event->rules['bunnymate/webhook'] = 'bunnymate/webhook';
             }
         );
     }
@@ -475,28 +475,28 @@ class BunnyMate extends Plugin
         $length = $video->getLength();
 
         $rows = [
-            Craft::t('_bunnymate', 'Status') => Html::tag('span', '', [
+            Craft::t('bunnymate', 'Status') => Html::tag('span', '', [
                     'class' => ['status', $status->indicatorClass()],
                     'style' => 'margin-inline-end: 5px;',
                 ]) . Html::encode($statusLabel),
-            Craft::t('_bunnymate', 'Duration') => $length
+            Craft::t('bunnymate', 'Duration') => $length
                 ? sprintf('%d:%02d', intdiv($length, 60), $length % 60)
                 : null,
-            Craft::t('_bunnymate', 'Dimensions') => $video->getWidth() && $video->getHeight()
+            Craft::t('bunnymate', 'Dimensions') => $video->getWidth() && $video->getHeight()
                 ? sprintf('%d &times; %d', $video->getWidth(), $video->getHeight())
                 : null,
             // A single text node on purpose: `.meta > .field > .input` is a flex container,
             // so whitespace between sibling elements is dropped rather than rendered
-            Craft::t('_bunnymate', 'Renditions') => !empty($resolutions)
-                ? Html::encode(Craft::t('_bunnymate', 'up to {resolution}', [
+            Craft::t('bunnymate', 'Renditions') => !empty($resolutions)
+                ? Html::encode(Craft::t('bunnymate', 'up to {resolution}', [
                     'resolution' => end($resolutions),
                 ]))
                 : null,
-            Craft::t('_bunnymate', 'Video ID') => Html::tag('code', Html::encode($video->videoGuid), [
+            Craft::t('bunnymate', 'Video ID') => Html::tag('code', Html::encode($video->videoGuid), [
                 'style' => 'font-size: 0.8em; word-break: break-all;',
             ]),
             // What the file was actually called, before the asset was renamed to .mp4
-            Craft::t('_bunnymate', 'Original') => $video->getOriginalFilename() !== null
+            Craft::t('bunnymate', 'Original') => $video->getOriginalFilename() !== null
                 ? Html::tag('span', Html::encode($video->getOriginalFilename()), [
                     'style' => 'word-break: break-all;',
                 ])
@@ -517,7 +517,7 @@ class BunnyMate extends Plugin
             $renditions[$resolution] = $video->getDownloadUrl($resolution);
         }
 
-        return Craft::$app->getView()->renderTemplate('_bunnymate/_components/video-panel', [
+        return Craft::$app->getView()->renderTemplate('bunnymate/_components/video-panel', [
             'asset' => $asset,
             'video' => $video,
             'fields' => $fields,
@@ -978,7 +978,7 @@ class BunnyMate extends Plugin
 
         $attributes = array_merge($attributes, $options['attributes'] ?? []);
 
-        $html = $view->renderTemplate('_bunnymate/_components/bunny-video', [
+        $html = $view->renderTemplate('bunnymate/_components/bunny-video', [
             'hlsUrl' => $useHls ? $video->getHlsUrl() : null,
             'mp4Url' => $video->getMp4Url($options['resolution'] ?? $settings->videoUrlRendition),
             'attributes' => array_filter($attributes, static fn($value): bool => $value !== false && $value !== null),

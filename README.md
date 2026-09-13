@@ -16,7 +16,7 @@ BunnyMate integrates [Bunny](https://bunny.net) with Craft CMS. It does four thi
 
 **CDN cache purging.** Changed files are purged from the edge when assets are added, replaced, moved or deleted, so a replaced file doesn't keep serving its old copy until the TTL expires. → [Cache purging](#cache-purging)
 
-Everything is configured in `config/_bunnymate.php`, with every credential resolvable from an environment variable.
+Everything is configured in `config/bunnymate.php`, with every credential resolvable from an environment variable.
 
 ## Requirements
 
@@ -26,11 +26,41 @@ This plugin requires Craft CMS 5.1.0 or later, and PHP 8.3 or later.
 
 This is a [private plugin](https://craftcms.com/docs/5.x/extend/plugin-guide.html#private-plugins), made for Værsågod and friends.
 
+## Migrating from BunnyMate 2.x
+
+BunnyMate 3.0 is no longer a private plugin: the handle changed from `_bunnymate` to `bunnymate`.
+
+It's the same Composer package, so Composer simply upgrades it — nothing to remove or re-require there. Craft is the part that cares: it keys installed plugins by handle, in the `plugins` table and in project config, and a changed handle reads to Craft as one plugin disappearing and a different one showing up. So the old handle needs uninstalling and the new one installing, at Craft's level only.
+
+Nothing is at risk in the process. BunnyMate 2.x shipped no migrations and owned no database tables, so uninstalling it loses nothing beyond its row in the `plugins` table.
+
+1. `ddev craft plugin/uninstall _bunnymate` — Craft only; the package stays where it is
+2. `ddev composer require vaersaagod/bunnymate:^3.0` — upgrades in place
+3. Rename `config/_bunnymate.php` to `config/bunnymate.php`
+4. `ddev craft plugin/install bunnymate`
+
+**Do step 1 before step 2**, so the uninstall runs against a plugin Craft can still load. If you've already upgraded, it's recoverable — see below.
+
+Settings carry over untouched: `pullingEnabled`, `pullZones` and `defaultPullZone` mean exactly what they meant in 2.x, and `bunnyPullUrl()` is unchanged. Templates need no edits. Everything else in 3.0 — the Bunny Storage filesystem, Bunny Stream — is additive and off until configured.
+
+Steps 1 and 4 both write to project config, so committing `project.yaml` carries the change to your other environments: applying it there removes `_bunnymate` and installs `bunnymate` without further intervention.
+
+### If you've already upgraded
+
+If Composer upgraded before you ran step 1, `_bunnymate` is left behind in the `plugins` table and in project config, and Craft can no longer load it. Pass `--force`, which lets Craft uninstall a plugin it can't load:
+
+```
+ddev craft plugin/uninstall _bunnymate --force
+ddev craft plugin/install bunnymate
+```
+
+That clears the `plugins` row, the plugin's migration track and its project config entry. The only thing it skips is the plugin's own uninstall migration, since there's no class left to run it — which costs nothing here, because 2.x had no migrations and created no tables.
+
 ## Migrating from `vaersaagod/bunny`  
 
 1. `ddev craft plugin/uninstall bunny && ddev composer remove vaersaagod/bunny`
-2. `ddev composer require vaersaagod/bunnymate && ddev craft plugin/install _bunnymate`
-3. Rename `config/bunny.php` to `config/_bunnymate.php`
+2. `ddev composer require vaersaagod/bunnymate && ddev craft plugin/install bunnymate`
+3. Rename `config/bunny.php` to `config/bunnymate.php`
 
 ## Configuration
 
@@ -79,7 +109,7 @@ Create it under **Settings &rarr; Filesystems**, and configure:
 | Access Key | The storage zone's password, found under **FTP & API Access** in the Bunny dashboard. Not the account API key. |
 | Region | The region the storage zone was created in. Getting this wrong causes every request to fail. |
 | Subfolder | Optional path within the storage zone to use as the filesystem root. |
-| Pull Zone | Which of the pull zones from `config/_bunnymate.php` serves this storage zone. |
+| Pull Zone | Which of the pull zones from `config/bunnymate.php` serves this storage zone. |
 
 Note that the filesystem has no **Base URL** field. Asset URLs are built from the selected pull zone's `hostname`, plus the subfolder, so the hostname is configured in one place and shared with `bunnyPullUrl()`.
 

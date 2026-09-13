@@ -9,7 +9,7 @@ use craft\helpers\UrlHelper;
 use vaersaagod\bunnymate\helpers\SignedUrls;
 
 /**
- * A Bunny Stream video library, as configured in `config/_bunnymate.php`.
+ * A Bunny Stream video library, as configured in `config/bunnymate.php`.
  *
  * @author Værsågod
  * @since 2.1.0

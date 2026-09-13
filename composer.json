@@ -2,7 +2,7 @@
   "name": "vaersaagod/bunnymate",
   "description": "Keeping your bunny finely-tuned for a hoppy life, mate!",
   "type": "craft-plugin",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "keywords": [
     "craft",
     "cms",
@@ -34,7 +34,7 @@
   },
   "extra": {
     "name": "BunnyMate",
-    "handle": "_bunnymate",
+    "handle": "bunnymate",
     "developer": "Værsågod",
     "developerUrl": "https://vaersaagod.no",
     "documentationUrl": "https://github.com/vaersaagod/bunnymate/blob/main/README.md",

@@ -153,8 +153,8 @@ class BunnyVideo extends Model
             return $this->getStatus()->label();
         }
         return $this->getEncodeProgress() >= 100
-            ? Craft::t('_bunnymate', 'Ready')
-            : Craft::t('_bunnymate', 'Playable');
+            ? Craft::t('bunnymate', 'Ready')
+            : Craft::t('bunnymate', 'Playable');
     }
 
     /**
@@ -437,7 +437,7 @@ class BunnyVideo extends Model
             $params['resolution'] = $resolution;
         }
 
-        return UrlHelper::actionUrl('_bunnymate/download/video', $params);
+        return UrlHelper::actionUrl('bunnymate/download/video', $params);
     }
 
     /**

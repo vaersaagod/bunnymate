@@ -1,8 +1,8 @@
 {% import "_includes/forms" as forms %}
 
 {{ forms.autosuggestField({
-    label: "Storage Zone"|t('_bunnymate'),
-    instructions: "The name of the Bunny Edge Storage zone."|t('_bunnymate'),
+    label: "Storage Zone"|t('bunnymate'),
+    instructions: "The name of the Bunny Edge Storage zone."|t('bunnymate'),
     id: 'storageZone',
     name: 'storageZone',
     value: fs.storageZone,
@@ -12,8 +12,8 @@
 }) }}
 
 {{ forms.autosuggestField({
-    label: "Access Key"|t('_bunnymate'),
-    instructions: "The storage zone's password, found under FTP & API Access in the Bunny dashboard."|t('_bunnymate'),
+    label: "Access Key"|t('bunnymate'),
+    instructions: "The storage zone's password, found under FTP & API Access in the Bunny dashboard."|t('bunnymate'),
     id: 'accessKey',
     name: 'accessKey',
     value: fs.accessKey,
@@ -23,8 +23,8 @@
 }) }}
 
 {{ forms.selectField({
-    label: "Region"|t('_bunnymate'),
-    instructions: "The region the storage zone was created in. Getting this wrong will cause every request to fail."|t('_bunnymate'),
+    label: "Region"|t('bunnymate'),
+    instructions: "The region the storage zone was created in. Getting this wrong will cause every request to fail."|t('bunnymate'),
     id: 'region',
     name: 'region',
     options: regionOptions,
@@ -34,8 +34,8 @@
 }) }}
 
 {{ forms.autosuggestField({
-    label: "Subfolder"|t('_bunnymate'),
-    instructions: "An optional path within the storage zone to use as this filesystem's root."|t('_bunnymate'),
+    label: "Subfolder"|t('bunnymate'),
+    instructions: "An optional path within the storage zone to use as this filesystem's root."|t('bunnymate'),
     id: 'subfolder',
     name: 'subfolder',
     value: fs.subfolder,
@@ -45,8 +45,8 @@
 
 {% if pullZoneOptions|length %}
     {{ forms.selectField({
-        label: "Pull Zone"|t('_bunnymate'),
-        instructions: "The pull zone that serves this storage zone. Pull zones are configured in config/_bunnymate.php."|t('_bunnymate'),
+        label: "Pull Zone"|t('bunnymate'),
+        instructions: "The pull zone that serves this storage zone. Pull zones are configured in config/bunnymate.php."|t('bunnymate'),
         id: 'pullZone',
         name: 'pullZone',
         options: pullZoneOptions,
@@ -55,10 +55,10 @@
     }) }}
 {% else %}
     {{ forms.field({
-        label: "Pull Zone"|t('_bunnymate'),
+        label: "Pull Zone"|t('bunnymate'),
         errors: fs.getErrors('pullZone'),
     }, tag('div', {
         class: 'warning with-icon',
-        text: "No pull zones are configured. Add one to the pullZones array in config/_bunnymate.php before enabling public URLs."|t('_bunnymate'),
+        text: "No pull zones are configured. Add one to the pullZones array in config/bunnymate.php before enabling public URLs."|t('bunnymate'),
     })) }}
 {% endif %}

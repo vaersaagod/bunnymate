@@ -107,7 +107,7 @@ class UploadController extends Controller
         if (!$saved) {
             // Don't leave an orphaned video behind in Bunny
             $stream->deleteVideo($library, $videoGuid);
-            return $this->asModelFailure($asset, Craft::t('_bunnymate', 'Couldn’t create the asset.'), 'asset');
+            return $this->asModelFailure($asset, Craft::t('bunnymate', 'Couldn’t create the asset.'), 'asset');
         }
 
         $videos->saveVideo(

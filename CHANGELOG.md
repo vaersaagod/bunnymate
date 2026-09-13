@@ -1,6 +1,6 @@
 # BunnyMate Changelog
 
-## Unreleased
+## 3.0.0 - Unreleased
 
 ### Added
 - Added a `Bunny Storage` filesystem type, for storing assets in a Bunny Edge Storage zone. Asset URLs are derived from the configured pull zone, so no separate Base URL is needed.
@@ -46,6 +46,7 @@
 - A video deleted on Bunny is now recognised when an asset is refreshed, and reported as missing rather than left looking playable.
 
 ### Changed
+- BunnyMate is no longer a private plugin. Its handle is now `bunnymate` rather than `_bunnymate`, so the config file moves from `config/_bunnymate.php` to `config/bunnymate.php`, and the webhook endpoint stays at `bunnymate/webhook`.
 - BunnyMate now requires PHP 8.3 or later.
 
 ## 2.0.0 - 2024-05-27

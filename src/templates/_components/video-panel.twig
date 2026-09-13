@@ -1,7 +1,7 @@
 {# The id sits on the fieldset so the whole panel can be swapped out after a refresh #}
 <fieldset id="bunnymate-video-panel" data-asset-id="{{ asset.id }}">
 
-    <legend class="h6">{{ "Bunny Stream"|t('_bunnymate') }}</legend>
+    <legend class="h6">{{ "Bunny Stream"|t('bunnymate') }}</legend>
 
     {# Plain `.meta`, not `.meta read-only`: this is the filled card treatment #}
     <div class="meta">
@@ -14,7 +14,7 @@
                     <div class="flex flex-nowrap">
                         {# No name attribute: this panel lives inside Craft's element form #}
                         <button type="button" class="btn small" id="bunnymate-refresh-video">
-                            {{ "Refresh"|t('_bunnymate') }}
+                            {{ "Refresh"|t('bunnymate') }}
                         </button>
                         <div class="spinner hidden" id="bunnymate-refresh-spinner"></div>
                     </div>
@@ -30,7 +30,7 @@
 {% if not static and (originalUrl or renditions) %}
     <fieldset id="bunnymate-video-downloads">
 
-        <legend class="h6">{{ "Downloads"|t('_bunnymate') }}</legend>
+        <legend class="h6">{{ "Downloads"|t('bunnymate') }}</legend>
 
         <div class="meta">
             <div class="field">
@@ -38,7 +38,7 @@
                     <div class="flex" style="flex-wrap: wrap; gap: var(--xs);">
 
                         {% if originalUrl %}
-                            <a class="btn small" href="{{ originalUrl }}" download>{{ "Original"|t('_bunnymate') }}</a>
+                            <a class="btn small" href="{{ originalUrl }}" download>{{ "Original"|t('bunnymate') }}</a>
                         {% endif %}
 
                         {% for resolution, url in renditions %}

@@ -113,7 +113,7 @@ class UploadVideo extends BaseJob
      */
     protected function defaultDescription(): ?string
     {
-        return Craft::t('_bunnymate', 'Sending video to Bunny Stream');
+        return Craft::t('bunnymate', 'Sending video to Bunny Stream');
     }
 
 }
