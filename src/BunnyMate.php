@@ -471,8 +471,9 @@ class BunnyMate extends Plugin
             $view->registerAssetBundle(UploadAsset::class);
             $view->registerJs(
                 sprintf(
-                    'Craft.BunnyMate.tusUrl = %s; Craft.BunnyMate.registerStreamUploader(%s);',
+                    'Craft.BunnyMate.tusUrl = %s; Craft.BunnyMate.maxConcurrentUploads = %d; Craft.BunnyMate.registerStreamUploader(%s);',
                     Json::encode(UploadAsset::tusUrl()),
+                    max(1, $this->getSettings()->maxConcurrentUploads),
                     Json::encode($fsTypes),
                 ),
                 View::POS_END,

@@ -60,11 +60,17 @@
     _folderInfo: null,
     _folderInfoPromises: null,
     _streamUploads: null,
+    _streamQueue: null,
+    _streamActive: 0,
+    _streamProgress: null,
+    _streamProgressKey: 0,
 
     init: function ($element, settings) {
       this._folderInfo = {};
       this._folderInfoPromises = {};
       this._streamUploads = [];
+      this._streamQueue = [];
+      this._streamProgress = {};
       this.base($element, settings);
     },
 
@@ -182,23 +188,79 @@
       }
 
       event.stopPropagation();
-      this.uploadToStream(file);
+      this.enqueueStreamUpload(file);
 
-      // Keep Craft's uploader from submitting this file over XHR
-      return false;
+      // Craft's own onFileAdd counts every file in the drop, so it knows when the last one is
+      // in and can report the rejected ones and reset. It never sees this one, so count it here.
+      if (++this._totalFileCounter === data.originalFiles.length) {
+        this._totalFileCounter = 0;
+        this._validFileCounter = 0;
+        this.processErrorMessages();
+      }
+
+      // Not false: blueimp adds the files of a drop in a $.each over this handler's return
+      // value, so false ends the loop and every file after this one is silently dropped.
+      // Nothing is submitted over XHR either way, since autoUpload is off and only
+      // data.submit() sends a file.
+      return true;
     },
 
     /**
+     * Returns how many videos may upload at once, from the `maxConcurrentUploads` setting.
+     *
+     * @returns {Number}
+     */
+    maxConcurrentUploads: function () {
+      return Math.max(1, parseInt(Craft.BunnyMate.maxConcurrentUploads, 10) || 1);
+    },
+
+    /**
+     * Queues a video for upload, and starts it if there's a free slot.
+     *
+     * A queued file counts as in progress straight away, so Craft sees one batch from the
+     * first file to the last rather than a series of batches, and the progress bar covers
+     * the whole of it.
+     *
      * @param {File} file
      */
-    uploadToStream: function (file) {
-      var self = this;
+    enqueueStreamUpload: function (file) {
+      var progressKey = ++this._streamProgressKey;
+
+      if (this._inProgressCounter === 0) {
+        // Craft's progress bar is shared with every other uploader on the page, so it only
+        // wears Bunny's colours while one of ours is actually running
+        Garnish.$bod.addClass('bunnymate-uploading');
+        this.$element.trigger('fileuploadstart');
+      }
 
       this._inProgressCounter++;
-      // Craft's progress bar is shared with every other uploader on the page, so it only wears
-      // Bunny's colours while one of ours is actually running
-      Garnish.$bod.addClass('bunnymate-uploading');
-      this.$element.trigger('fileuploadstart');
+      this._streamProgress[progressKey] = {loaded: 0, total: file.size};
+      this._streamQueue.push({file: file, progressKey: progressKey});
+      this.startQueuedUploads();
+    },
+
+    /**
+     * Starts queued uploads until the concurrency cap is reached.
+     */
+    startQueuedUploads: function () {
+      while (this._streamActive < this.maxConcurrentUploads() && this._streamQueue.length) {
+        var next = this._streamQueue.shift();
+        this._streamActive++;
+        this.uploadToStream(next.file, next.progressKey);
+      }
+    },
+
+    /**
+     * Prepares and uploads a single video.
+     *
+     * Preparing happens here rather than when the file is queued, so the upload signature,
+     * which expires, is only issued once the upload is about to use it.
+     *
+     * @param {File} file
+     * @param {Number} progressKey
+     */
+    uploadToStream: function (file, progressKey) {
+      var self = this;
 
       // Held so a failure after this point can tidy up the asset and the empty video that
       // preparing already created
@@ -212,7 +274,7 @@
           return Craft.BunnyMate.loadTus();
         })
         .then(function () {
-          self.startTusUpload(file, credentials);
+          self.startTusUpload(file, credentials, progressKey);
         })
         .catch(function (error) {
           // Without this, anything failing between preparing and the first byte leaves an
@@ -226,7 +288,8 @@
             file,
             (error.response && error.response.data && error.response.data.message) ||
               (error && error.message) ||
-              Craft.t('bunnymate', 'Couldn’t start the upload.')
+              Craft.t('bunnymate', 'Couldn’t start the upload.'),
+            progressKey
           );
         });
     },
@@ -234,8 +297,9 @@
     /**
      * @param {File} file
      * @param {Object} credentials
+     * @param {Number} progressKey
      */
-    startTusUpload: function (file, credentials) {
+    startTusUpload: function (file, credentials, progressKey) {
       var self = this;
 
       var upload = new tus.Upload(file, {
@@ -254,20 +318,15 @@
         // Don't leave fingerprints behind for uploads that finished
         removeFingerprintOnSuccess: true,
         onProgress: function (bytesUploaded, bytesTotal) {
-          // Craft's index reads loaded/total off the progress event
-          self.$element.trigger('fileuploadprogressall', [
-            {
-              loaded: bytesUploaded,
-              total: bytesTotal,
-            },
-          ]);
+          self._streamProgress[progressKey] = {loaded: bytesUploaded, total: bytesTotal};
+          self.reportProgress();
         },
         onSuccess: function () {
-          self.finishUpload(credentials);
+          self.finishUpload(credentials, progressKey);
         },
         onError: function (error) {
           self.abortUpload(credentials.assetId);
-          self.failUpload(file, error.message || Craft.t('bunnymate', 'Upload failed.'));
+          self.failUpload(file, error.message || Craft.t('bunnymate', 'Upload failed.'), progressKey);
         },
       });
 
@@ -282,9 +341,36 @@
     },
 
     /**
-     * @param {Object} credentials
+     * Reports the progress of every upload in the air as one, the way Craft's own
+     * fileuploadprogressall does. Per upload, several running at once would have the shared
+     * progress bar jumping back and forth between them.
      */
-    finishUpload: function (credentials) {
+    reportProgress: function () {
+      var loaded = 0;
+      var total = 0;
+      for (var key in this._streamProgress) {
+        if (Object.prototype.hasOwnProperty.call(this._streamProgress, key)) {
+          loaded += this._streamProgress[key].loaded;
+          total += this._streamProgress[key].total;
+        }
+      }
+      if (!total) {
+        return;
+      }
+      // Craft's index reads loaded/total off the progress event
+      this.$element.trigger('fileuploadprogressall', [
+        {
+          loaded: loaded,
+          total: total,
+        },
+      ]);
+    },
+
+    /**
+     * @param {Object} credentials
+     * @param {Number} progressKey
+     */
+    finishUpload: function (credentials, progressKey) {
       var self = this;
 
       Craft.sendActionRequest('POST', 'bunnymate/upload/complete', {
@@ -306,25 +392,37 @@
               },
             },
           ]);
-          self.endUpload();
+          self.endUpload(progressKey);
         });
     },
 
     /**
      * @param {File} file
      * @param {String} message
+     * @param {Number} progressKey
      */
-    failUpload: function (file, message) {
-      Craft.cp.displayError(message);
-      // Craft's handler calls response() on the data argument, so it has to be there
+    failUpload: function (file, message, progressKey) {
+      // Shaped like a failed blueimp upload, so Craft's own fileuploadfail handler shows the
+      // message and is the only one to. Showing it here as well gave every failure two
+      // notices: this one, and Craft's generic "Upload failed" for want of a message.
+      // The asset index and Assets fields read jqXHR off the data argument; the image
+      // uploader calls response() and reads jqXHR off that.
+      var jqXHR = {
+        responseJSON: {
+          message: message,
+          filename: file.name,
+        },
+      };
       this.$element.trigger('fileuploadfail', [
         {
+          files: [file],
+          jqXHR: jqXHR,
           response: function () {
-            return null;
+            return {jqXHR: jqXHR};
           },
         },
       ]);
-      this.endUpload();
+      this.endUpload(progressKey);
     },
 
     /**
@@ -341,12 +439,33 @@
       });
     },
 
-    endUpload: function () {
+    /**
+     * @param {Number} progressKey
+     */
+    endUpload: function (progressKey) {
+      // A finished upload's bytes stay in the sum until the batch is over. Dropping them
+      // while others are still running would send the progress bar backwards.
+      var progress = this._streamProgress[progressKey];
+      if (progress && progress.loaded < progress.total) {
+        // Except a failed upload's unsent bytes, which would hold the bar short of 100%
+        progress.total = progress.loaded;
+      }
+
+      this._streamActive = Math.max(0, this._streamActive - 1);
+
+      // Before the count goes down, not after. Craft's handler asks isLastUpload(), which
+      // expects the upload that just ended to still be counted, so decrementing first had
+      // the second-to-last upload of a batch hide the progress bar and refresh the index.
+      this.$element.trigger('fileuploadalways');
+
       this._inProgressCounter = Math.max(0, this._inProgressCounter - 1);
       if (this._inProgressCounter === 0) {
         Garnish.$bod.removeClass('bunnymate-uploading');
+        this._streamProgress = {};
+        return;
       }
-      this.$element.trigger('fileuploadalways');
+
+      this.startQueuedUploads();
     },
 
     /**
@@ -368,6 +487,9 @@
         }
       }
       this._streamUploads = [];
+      this._streamQueue = [];
+      this._streamActive = 0;
+      this._streamProgress = {};
       this.base();
     },
   });

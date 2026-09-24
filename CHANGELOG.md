@@ -2,11 +2,30 @@
 
 ## Unreleased
 
+> [!IMPORTANT]
+> **This release renames three settings, and the old names are silently ignored.**
+>
+> | Before | After |
+> | --- | --- |
+> | `transformThumbnails` | `useImagerForThumbnailTransforms` |
+> | `transformDefaults` | `imagerTransformDefaults` |
+> | `transformConfigOverrides` | `imagerTransformConfigOverrides` |
+>
+> Craft ignores setting keys it doesn't recognise, so nothing errors if `config/bunnymate.php` still uses the old names. They just stop having any effect, and all three fall back to their defaults: Imager X transforms switch back on where they'd been turned off, and any transform defaults or config overrides are dropped. Rename the keys when upgrading.
+
+### Added
+- Added the `maxConcurrentUploads` setting. Videos dropped on the control panel uploader together are now queued, and by default uploaded one at a time.
+
 ### Changed
 - Renamed the `transformThumbnails`, `transformDefaults` and `transformConfigOverrides` settings to `useImagerForThumbnailTransforms`, `imagerTransformDefaults` and `imagerTransformConfigOverrides`, so it's clear they concern Imager X. The old names are no longer recognised; rename them in `config/bunnymate.php`.
 
 ### Fixed
 - Fixed control panel thumbnails returning 403 for video libraries with both `optimizerEnabled` and CDN token authentication enabled. The `width` and `height` params were signed as part of the path, but Bunny hashes query params separately from it, so the token never matched.
+- Fixed only the first video being uploaded when several were dropped or selected at once. The rest never reached Bunny Stream.
+- Fixed the upload progress bar jumping between files when several videos upload at once. It now shows their combined progress.
+- Fixed the asset index hiding the progress bar and refreshing before the last video of a batch had finished uploading.
+- Fixed two videos uploaded at the same time being able to claim the same filename, such as `clip.mov` and `clip.mp4`, which are both saved as `.mp4`.
+- Fixed a failed video upload showing two error notices, one with the actual reason and a generic "Upload failed" alongside it.
 
 ## 3.0.0 - 2026-09-14
 

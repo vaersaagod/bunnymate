@@ -54,6 +54,10 @@ return [
     // Craft's asset indexer doesn't report them as missing
     'writePlaceholderFiles' => true,
 
+    // How many videos the control panel uploader sends to Bunny Stream at once. The rest of a
+    // batch is queued. One at a time gets each video to Bunny, and encoding, soonest.
+    'maxConcurrentUploads' => 1,
+
     // Where to load hls.js from, for adaptive playback outside Safari. Null never loads it,
     // and the player falls back to an MP4 rendition instead.
     'hlsJsUrl' => 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js',

@@ -400,6 +400,8 @@ Craft handles two small requests per file: one to create the video and its asset
 
 Only volumes listed in `volumeVideoLibraries` upload this way, and only for users with `saveAssets` permission on them.
 
+Several videos dropped at once are queued and uploaded one at a time, the way Craft's own uploader handles files. Side by side wouldn't finish the batch any sooner, since every upload shares the same bandwidth, and one at a time gets each video to Bunny, and encoding, as early as possible. Set `maxConcurrentUploads` to allow more at once. Each video's upload credential is only issued when its turn comes, so a long queue can't outlive it.
+
 Uploaded videos are named `.mp4` whatever the source file was. The source is never stored, since Bunny keeps it and serves MP4 and HLS, and Craft derives an asset's MIME type from its extension, so a `.mov` asset would advertise `video/quicktime` for an MP4 URL and browsers would refuse to play it.
 
 #### Videos that arrive some other way

@@ -18,6 +18,7 @@ use vaersaagod\bunnymate\models\BunnyVideo;
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\Response;
+use yii\web\ServiceUnavailableHttpException;
 
 /**
  * Issues TUS upload credentials, so the browser can upload straight to Bunny Stream.
@@ -73,35 +74,51 @@ class UploadController extends Controller
         $originalFilename = $filename;
         $filename = sprintf('%s.mp4', pathinfo($filename, PATHINFO_FILENAME));
 
-        // Craft's own uploader resolves filename clashes, by prompt or by renaming. Nothing
-        // asks here, and two assets sharing a name in one folder would share one placeholder
-        // file, so deleting either would leave the other pointing at nothing.
-        if ($this->_filenameExists($filename, $folder->id)) {
-            $filename = Craft::$app->getAssets()->getNameReplacementInFolder($filename, $folder->id);
+        // Checking for a clash and saving the asset that claims the name have to happen as one,
+        // or two uploads landing on the same name at once -- clip.mov and clip.mp4 in one
+        // batch, say -- would both find it free
+        $mutex = Craft::$app->getMutex();
+        $lockName = "bunnymate:upload-prepare:$folder->id";
+        if (!$mutex->acquire($lockName, 15)) {
+            throw new ServiceUnavailableHttpException(
+                null,
+                Craft::t('bunnymate', 'Another upload is being prepared for this folder. Try again in a moment.'),
+            );
         }
 
-        $stream = BunnyMate::getInstance()->getStream();
-        $videoGuid = $stream->createVideo($library, pathinfo($filename, PATHINFO_FILENAME));
-
-        $asset = new Asset();
-        $asset->volumeId = $volume->id;
-        $asset->folderId = $folder->id;
-        $asset->folderPath = $folder->path;
-        $asset->filename = $filename;
-        $asset->kind = Asset::KIND_VIDEO;
-        // Craft sets this on its own upload path, and the asset index has a column for it
-        $asset->uploaderId = Craft::$app->getUser()->getId();
-        // These assets hold no file of their own, so the create scenario (which requires a
-        // temp file) doesn't apply
-        $asset->setScenario(Asset::SCENARIO_INDEX);
-
-        // The video is attached below, so the auto-upload handler must not fire for this save
-        $videos = BunnyMate::getInstance()->getVideos();
-        $videos->suspendAutoUpload = true;
         try {
-            $saved = Craft::$app->getElements()->saveElement($asset);
+            // Craft's own uploader resolves filename clashes, by prompt or by renaming. Nothing
+            // asks here, and two assets sharing a name in one folder would share one
+            // placeholder file, so deleting either would leave the other pointing at nothing.
+            if ($this->_filenameExists($filename, $folder->id)) {
+                $filename = Craft::$app->getAssets()->getNameReplacementInFolder($filename, $folder->id);
+            }
+
+            $stream = BunnyMate::getInstance()->getStream();
+            $videoGuid = $stream->createVideo($library, pathinfo($filename, PATHINFO_FILENAME));
+
+            $asset = new Asset();
+            $asset->volumeId = $volume->id;
+            $asset->folderId = $folder->id;
+            $asset->folderPath = $folder->path;
+            $asset->filename = $filename;
+            $asset->kind = Asset::KIND_VIDEO;
+            // Craft sets this on its own upload path, and the asset index has a column for it
+            $asset->uploaderId = Craft::$app->getUser()->getId();
+            // These assets hold no file of their own, so the create scenario (which requires a
+            // temp file) doesn't apply
+            $asset->setScenario(Asset::SCENARIO_INDEX);
+
+            // The video is attached below, so the auto-upload handler must not fire for this save
+            $videos = BunnyMate::getInstance()->getVideos();
+            $videos->suspendAutoUpload = true;
+            try {
+                $saved = Craft::$app->getElements()->saveElement($asset);
+            } finally {
+                $videos->suspendAutoUpload = false;
+            }
         } finally {
-            $videos->suspendAutoUpload = false;
+            $mutex->release($lockName);
         }
 
         if (!$saved) {

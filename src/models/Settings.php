@@ -84,6 +84,17 @@ class Settings extends Model
     public bool $writePlaceholderFiles = true;
 
     /**
+     * @var int How many videos the control panel uploader sends to Bunny Stream at once.
+     *
+     * The rest of a batch waits its turn. Uploading side by side doesn't finish a batch any
+     * sooner, since every upload shares the same bandwidth, but one at a time gets each video
+     * to Bunny, and encoding, as early as possible. Craft's own uploader goes one at a time too.
+     *
+     * @since 3.1.0
+     */
+    public int $maxConcurrentUploads = 1;
+
+    /**
      * @var string|null Where to load hls.js from, for adaptive playback.
      *
      * Only Safari plays HLS natively, so without this the player falls back to an MP4
