@@ -35,6 +35,10 @@ return [
         //    // Set to true if Bunny Optimizer is enabled on the library's pull zone, so
         //    // control panel thumbnails can be resized rather than served full size
         //    'optimizerEnabled' => false,
+        //    // Whether the control panel uploader sends videos straight to Bunny over TUS.
+        //    // Off leaves the library's volumes to Craft's own uploader: files are stored in
+        //    // the volume and Bunny fetches them from there, with no placeholder files.
+        //    'tusUploadsEnabled' => true,
         //],
     ],
     // Maps volume handles to video library handles, and is what turns Bunny Stream on: a

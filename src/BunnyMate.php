@@ -482,7 +482,8 @@ class BunnyMate extends Plugin
     }
 
     /**
-     * Returns the distinct filesystem classes used by volumes mapped to a video library.
+     * Returns the distinct filesystem classes used by volumes mapped to a video library that
+     * takes uploads over TUS.
      *
      * @return string[]
      */
@@ -499,6 +500,12 @@ class BunnyMate extends Plugin
                 continue;
             }
             try {
+                // A library with TUS uploads off leaves its volumes to Craft's own uploader.
+                // A volume of another library on the same filesystem class still registers
+                // it, and folder-info then tells the uploader which volumes to leave alone.
+                if (!$this->getStream()->getLibraryForVolume($volumeHandle)?->tusUploadsEnabled) {
+                    continue;
+                }
                 $fsTypes[] = $volume->getFs()::class;
             } catch (\Throwable $e) {
                 Craft::error($e->getMessage(), __METHOD__);

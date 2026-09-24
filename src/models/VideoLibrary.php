@@ -80,6 +80,20 @@ class VideoLibrary extends Model
      */
     public bool $optimizerEnabled = false;
 
+    /**
+     * @var bool Whether the control panel uploader sends videos for this library straight to
+     * Bunny over TUS.
+     *
+     * With it off, the library's volumes are left to Craft's own uploader: the file is
+     * stored in the volume like any other asset, and Bunny fetches it from the asset's URL,
+     * which needs `autoUploadVideos` on and the volume reachable from the public internet.
+     * That suits libraries holding smaller files, which fit through PHP's upload limits and
+     * don't need a placeholder file standing in for them.
+     *
+     * @since 3.1.0
+     */
+    public bool $tusUploadsEnabled = true;
+
     /** @var string|null An optional collection to create videos in */
     public ?string $collectionId = null;
 

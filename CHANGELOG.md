@@ -14,6 +14,7 @@
 > Craft ignores setting keys it doesn't recognise, so nothing errors if `config/bunnymate.php` still uses the old names. They just stop having any effect, and all three fall back to their defaults: Imager X transforms switch back on where they'd been turned off, and any transform defaults or config overrides are dropped. Rename the keys when upgrading.
 
 ### Added
+- Added the per-library `tusUploadsEnabled` setting. With it off, the library's volumes use Craft's own uploader: videos are stored in the volume and fetched by Bunny from there, so no placeholder files are written. Defaults to `true`.
 - Added the `maxConcurrentUploads` setting. Videos dropped on the control panel uploader together are now queued, and by default uploaded one at a time.
 
 ### Changed

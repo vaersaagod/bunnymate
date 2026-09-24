@@ -400,6 +400,17 @@ Craft handles two small requests per file: one to create the video and its asset
 
 Only volumes listed in `volumeVideoLibraries` upload this way, and only for users with `saveAssets` permission on them.
 
+Set `tusUploadsEnabled` to `false` on a library to leave its volumes to Craft's own uploader instead. Videos are then stored in the volume like any other file and sent to Bunny as described under [Videos that arrive some other way](#videos-that-arrive-some-other-way), so no [placeholder file](#placeholder-files) is written. That suits a library of smaller clips that fit through PHP's upload limits anyway. It needs `autoUploadVideos` on and the volume reachable from the public internet, or the videos never reach Bunny. They also keep their own extension rather than being renamed to `.mp4`.
+
+```php
+'videoLibraries' => [
+    'clips' => [
+        // ...
+        'tusUploadsEnabled' => false,
+    ],
+],
+```
+
 Several videos dropped at once are queued and uploaded one at a time, the way Craft's own uploader handles files. Side by side wouldn't finish the batch any sooner, since every upload shares the same bandwidth, and one at a time gets each video to Bunny, and encoding, as early as possible. Set `maxConcurrentUploads` to allow more at once. Each video's upload credential is only issued when its turn comes, so a long queue can't outlive it.
 
 Uploaded videos are named `.mp4` whatever the source file was. The source is never stored, since Bunny keeps it and serves MP4 and HLS, and Craft derives an asset's MIME type from its extension, so a `.mov` asset would advertise `video/quicktime` for an MP4 URL and browsers would refuse to play it.
@@ -575,6 +586,8 @@ Videos uploaded straight to Bunny have no bytes in the volume, which Craft's ass
 So an empty file is written at the asset's path when the upload starts, purely to give the indexer something to match. It has to be the asset's own filename, since a placeholder under any other name would itself be indexed as a new file.
 
 The cost is that anything reading the asset's own file gets an empty one. Playback, thumbnails and metadata all come from Bunny, so they're unaffected. Set `writePlaceholderFiles` to `false` to turn this off.
+
+Libraries with `tusUploadsEnabled` off never need one, since their videos are stored in the volume.
 
 ### Known limitations
 

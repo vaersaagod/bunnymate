@@ -62,6 +62,9 @@ class UploadController extends Controller
         if (!$library) {
             throw new BadRequestHttpException("Volume \"$volume->handle\" is not configured for Bunny Stream");
         }
+        if (!$library->tusUploadsEnabled) {
+            throw new BadRequestHttpException("Video library \"$library->handle\" doesn't take uploads over TUS");
+        }
 
         $filename = AssetsHelper::prepareAssetName($filename);
         if (!in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), $this->_allowedExtensions(), true)) {
@@ -182,7 +185,9 @@ class UploadController extends Controller
         }
 
         return $this->asJson([
-            'stream' => $library !== null && Craft::$app->getUser()->checkPermission("saveAssets:$volume->uid"),
+            'stream' => $library !== null
+                && $library->tusUploadsEnabled
+                && Craft::$app->getUser()->checkPermission("saveAssets:$volume->uid"),
             'extensions' => $this->_allowedExtensions(),
         ]);
     }
