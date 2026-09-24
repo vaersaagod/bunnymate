@@ -177,7 +177,7 @@ class Settings extends Model
      *
      * @since 2.1.0
      */
-    public bool $transformThumbnails = true;
+    public bool $useImagerForThumbnailTransforms = true;
 
     /**
      * @var array|null Transform defaults passed to Imager X when transforming a thumbnail.
@@ -189,7 +189,7 @@ class Settings extends Model
      *
      * @since 3.0.0
      */
-    public ?array $transformDefaults = null;
+    public ?array $imagerTransformDefaults = null;
 
     /**
      * @var array|null Config overrides passed to Imager X when transforming a thumbnail.
@@ -205,7 +205,7 @@ class Settings extends Model
      *
      * @since 3.0.0
      */
-    public ?array $transformConfigOverrides = null;
+    public ?array $imagerTransformConfigOverrides = null;
 
     /**
      * @var string|null The MP4 rendition `asset.url` should point at, e.g. `'1080p'`.

@@ -444,15 +444,15 @@ Video assets show Bunny's poster frame as their control panel thumbnail, instead
 
 Bunny serves the poster frame at full resolution, and only resizes from the URL when **Bunny Optimizer** is enabled on the pull zone. Left alone, a 4K video would mean a 4K JPEG for every thumbnail.
 
-So where [Imager X](https://imager-x.spacecat.ninja) is installed, BunnyMate resizes with that instead. The frame is fetched once, transformed to whatever size Craft asked for and cached locally: a 120px thumbnail from a 4K poster comes out around 3KB rather than 150KB. Set `transformThumbnails` to `false` to turn this off.
+So where [Imager X](https://imager-x.spacecat.ninja) is installed, BunnyMate resizes with that instead. The frame is fetched once, transformed to whatever size Craft asked for and cached locally: a 120px thumbnail from a 4K poster comes out around 3KB rather than 150KB. Set `useImagerForThumbnailTransforms` to `false` to turn this off.
 
 Imager downloads over curl, which sends no referrer, and Bunny libraries block referrer-less requests by default. BunnyMate passes the site's own URL as the referrer so this works either way.
 
-`transformDefaults` and `transformConfigOverrides` are handed to Imager's `transformImage()` as its third and fourth arguments:
+`imagerTransformDefaults` and `imagerTransformConfigOverrides` are handed to Imager's `transformImage()` as its third and fourth arguments:
 
 ```php
-'transformDefaults' => ['format' => 'webp', 'quality' => 60],
-'transformConfigOverrides' => ['useRemoteUrlQueryString' => true],
+'imagerTransformDefaults' => ['format' => 'webp', 'quality' => 60],
+'imagerTransformConfigOverrides' => ['useRemoteUrlQueryString' => true],
 ```
 
 Defaults sit *under* the transform BunnyMate builds, so the width and height Craft asked for always win — `mode`, which defaults to `crop`, along with `position`, `format`, `quality` and the rest are yours to set. Config overrides take precedence over BunnyMate's own, with one exception: `curlOptions` is merged key by key rather than replaced, so setting an unrelated curl option can't quietly drop the referrer and turn every thumbnail into a 403. Setting `CURLOPT_REFERER` yourself does replace it.

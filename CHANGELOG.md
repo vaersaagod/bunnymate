@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Renamed the `transformThumbnails`, `transformDefaults` and `transformConfigOverrides` settings to `useImagerForThumbnailTransforms`, `imagerTransformDefaults` and `imagerTransformConfigOverrides`, so it's clear they concern Imager X. The old names are no longer recognised; rename them in `config/bunnymate.php`.
+
 ### Fixed
 - Fixed control panel thumbnails returning 403 for video libraries with both `optimizerEnabled` and CDN token authentication enabled. The `width` and `height` params were signed as part of the path, but Bunny hashes query params separately from it, so the token never matched.
 

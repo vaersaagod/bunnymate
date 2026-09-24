@@ -681,7 +681,7 @@ class BunnyMate extends Plugin
                 }
                 try {
                     // Imager gets the unsized frame, so one cached source serves every size
-                    $useImager = $this->getSettings()->transformThumbnails && $this->_getImagerService() !== null;
+                    $useImager = $this->getSettings()->useImagerForThumbnailTransforms && $this->_getImagerService() !== null;
                     $url = $useImager
                         ? $video->getThumbnailUrl()
                         : $video->getThumbnailUrl($event->width, $event->height);
@@ -711,7 +711,7 @@ class BunnyMate extends Plugin
      */
     public function transformThumbUrl(string $url, int $width, int $height): string
     {
-        if (!$this->getSettings()->transformThumbnails) {
+        if (!$this->getSettings()->useImagerForThumbnailTransforms) {
             return $url;
         }
 
@@ -724,9 +724,9 @@ class BunnyMate extends Plugin
 
         // Defaults sit under the transform, so the size Craft asked for is never overridden,
         // but `mode` and anything else are
-        $defaults = array_merge(['mode' => 'crop'], $settings->transformDefaults ?? []);
+        $defaults = array_merge(['mode' => 'crop'], $settings->imagerTransformDefaults ?? []);
 
-        $configOverrides = $settings->transformConfigOverrides ?? [];
+        $configOverrides = $settings->imagerTransformConfigOverrides ?? [];
 
         // Bunny libraries block requests without a referrer by default, and Imager downloads
         // over curl, which sends none. Merged key by key rather than replaced: setting some
