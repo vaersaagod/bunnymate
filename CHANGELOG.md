@@ -24,6 +24,7 @@
 - Fixed only the first video being uploaded when several were dropped or selected at once. The rest never reached Bunny Stream.
 - Fixed the upload progress bar jumping between files when several videos upload at once. It now shows their combined progress.
 - Fixed the asset index hiding the progress bar and refreshing before the last video of a batch had finished uploading.
+- Fixed Assets fields hiding the upload progress bar partway through a batch of videos, after a failed upload or once the second-to-last video had finished.
 - Fixed two videos uploaded at the same time being able to claim the same filename, such as `clip.mov` and `clip.mp4`, which are both saved as `.mp4`.
 - Fixed a failed video upload showing two error notices, one with the actual reason and a generic "Upload failed" alongside it.
 

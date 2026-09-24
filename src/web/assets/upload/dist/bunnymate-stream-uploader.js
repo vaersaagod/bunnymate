@@ -357,6 +357,7 @@
       if (!total) {
         return;
       }
+      this.keepFieldProgressVisible();
       // Craft's index reads loaded/total off the progress event
       this.$element.trigger('fileuploadprogressall', [
         {
@@ -364,6 +365,32 @@
           total: total,
         },
       ]);
+    },
+
+    /**
+     * Shows an Assets field's progress bar again if Craft hid it while a batch is still going.
+     *
+     * An Assets field hides its bar on any failure, and after each success once it has
+     * rendered the new element and isLastUpload() says so. That render is a request of its
+     * own, and by the time it's back the count has moved on, so the second-to-last video of a
+     * batch is taken for the last. Craft's field has the same gap with its own uploads. Rather
+     * than guess at every way the bar gets hidden, it's put back while uploads remain. The
+     * asset index never hides its bar early, so this only applies to fields.
+     */
+    keepFieldProgressVisible: function () {
+      if (this._inProgressCounter === 0) {
+        return;
+      }
+      // Craft keeps a reference to the field on its container, which is our element
+      var input = this.$element.data('elementSelect');
+      if (!input || !input.progressBar || !(input instanceof Craft.AssetSelectInput)) {
+        return;
+      }
+      if (!input.progressBar.$progressBar.hasClass('hidden')) {
+        return;
+      }
+      this.$element.addClass('uploading');
+      input.progressBar.showProgressBar();
     },
 
     /**
