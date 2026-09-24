@@ -158,9 +158,11 @@ class VideoLibrary extends Model
      *
      * @param string $videoGuid
      * @param string $file e.g. `playlist.m3u8`, `thumbnail.jpg`, `play_720p.mp4`
+     * @param array $params Query params, e.g. Bunny Optimizer's `width` and `height`. Kept out
+     *                      of `$file`, because a signed URL covers them separately from the path.
      * @return string
      */
-    public function getVideoUrl(string $videoGuid, string $file, bool $defer = false, bool $directory = false): string
+    public function getVideoUrl(string $videoGuid, string $file, bool $defer = false, bool $directory = false, array $params = []): string
     {
         $path = "/$videoGuid/" . ltrim($file, '/');
         $url = "https://$this->hostname$path";
@@ -170,7 +172,7 @@ class VideoLibrary extends Model
         // those at segments, each fetched as its own request.
         $signPath = $directory ? "/$videoGuid/" : $path;
 
-        return $this->signUrl($url, $signPath, defer: $defer);
+        return $this->signUrl($url, $signPath, defer: $defer, params: $params);
     }
 
     /**
@@ -235,16 +237,26 @@ class VideoLibrary extends Model
      * Returns the token a playback URL expects, for a pull zone with token authentication
      * enabled.
      *
-     * @param string $videoGuid
+     * @param string $signPath
      * @param int $expires UNIX timestamp
+     * @param array $params Any other query params the URL carries, which the token has to cover
      * @return string
      */
-    public function getPlaybackToken(string $signPath, int $expires): string
+    public function getPlaybackToken(string $signPath, int $expires, array $params = []): string
     {
         // Bunny's CDN token authentication: the SHA256 of key + path + expiry, raw rather than
         // hex, in URL-safe base64 with the padding dropped. Signing the video GUID instead of
         // the path is rejected -- verified against a live token-authenticated pull zone.
-        $raw = hash('sha256', $this->tokenAuthKey . $signPath . $expires, true);
+        // Any other query params are hashed too, after the expiry: sorted by key and joined
+        // as `key=value&key=value`, unencoded. Leave them out and Bunny answers 403.
+        ksort($params);
+        $paramData = implode('&', array_map(
+            static fn(string|int $key, mixed $value): string => "$key=$value",
+            array_keys($params),
+            $params,
+        ));
+
+        $raw = hash('sha256', $this->tokenAuthKey . $signPath . $expires . $paramData, true);
 
         return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
     }
@@ -253,8 +265,9 @@ class VideoLibrary extends Model
      * Signs a URL for a token-authenticated library, or returns it untouched if token
      * authentication isn't enabled.
      *
-     * Bunny expects the URL-safe base64 of `SHA256_RAW(tokenAuthKey + signPath + expires)`,
-     * with the hash and the expiry appended as `token` and `expires` query params.
+     * Bunny expects the URL-safe base64 of `SHA256_RAW(tokenAuthKey + signPath + expires + params)`,
+     * with the hash and the expiry appended as `token` and `expires` query params. Other query
+     * params go in `$params` rather than on `$url`, so they're covered by the token.
      *
      * `$signPath` is what the resulting token grants access to: a file path covers that one
      * file, and a path ending in a slash covers everything beneath it, nested paths included.
@@ -264,26 +277,30 @@ class VideoLibrary extends Model
      * @param string $url
      * @param string $signPath Path the token should cover, e.g. `/{guid}/play_720p.mp4`
      * @param int|null $expires UNIX timestamp; defaults to now plus [[signedUrlDuration]]
+     * @param bool $defer
+     * @param array $params Query params to add to the URL, e.g. `['width' => 240]`
      * @return string
      */
-    public function signUrl(string $url, string $signPath, ?int $expires = null, bool $defer = false): string
+    public function signUrl(string $url, string $signPath, ?int $expires = null, bool $defer = false, array $params = []): string
     {
         if (!$this->getIsTokenAuthEnabled()) {
-            return $url;
+            return empty($params) ? $url : UrlHelper::urlWithParams($url, $params);
         }
         // Signing now would bake an expiry into whatever cache this ends up in, so on site
         // requests the real token is minted as the response goes out instead
         if ($defer && $expires === null && SignedUrls::shouldDefer()) {
             return UrlHelper::urlWithParams($url, [
-                'token' => SignedUrls::placeholder(SignedUrls::KIND_TOKEN, $this->handle, $signPath),
-                'expires' => SignedUrls::placeholder(SignedUrls::KIND_EXPIRES, $this->handle, $signPath),
+                ...$params,
+                'token' => SignedUrls::placeholder(SignedUrls::KIND_TOKEN, $this->handle, $signPath, params: $params),
+                'expires' => SignedUrls::placeholder(SignedUrls::KIND_EXPIRES, $this->handle, $signPath, params: $params),
             ]);
         }
 
         $expires ??= time() + $this->signedUrlDuration;
 
         return UrlHelper::urlWithParams($url, [
-            'token' => $this->getPlaybackToken($signPath, $expires),
+            ...$params,
+            'token' => $this->getPlaybackToken($signPath, $expires, $params),
             'expires' => $expires,
         ]);
     }

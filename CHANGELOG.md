@@ -1,5 +1,10 @@
 # BunnyMate Changelog
 
+## Unreleased
+
+### Fixed
+- Fixed control panel thumbnails returning 403 for video libraries with both `optimizerEnabled` and CDN token authentication enabled. The `width` and `height` params were signed as part of the path, but Bunny hashes query params separately from it, so the token never matched.
+
 ## 3.0.0 - 2026-09-14
 
 > [!IMPORTANT]

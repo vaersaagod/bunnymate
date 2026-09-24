@@ -86,11 +86,17 @@ class SignedUrls
      * @param string $subject What the token is signed over: a path for [[TYPE_CDN]], a video
      *                         GUID for [[TYPE_EMBED]]
      * @param string $type One of the `TYPE_*` constants
+     * @param array $params Other query params on a [[TYPE_CDN]] URL, which its token covers too
      * @return string
      */
-    public static function placeholder(string $kind, string $libraryHandle, string $subject, string $type = self::TYPE_CDN): string
+    public static function placeholder(string $kind, string $libraryHandle, string $subject, string $type = self::TYPE_CDN, array $params = []): string
     {
-        $payload = self::_encode(['h' => $libraryHandle, 'p' => $subject, 't' => $type]);
+        $payload = self::_encode(array_filter([
+            'h' => $libraryHandle,
+            'p' => $subject,
+            't' => $type,
+            'q' => $params,
+        ]));
 
         return self::PREFIX . $kind . '.' . $payload . '.' . self::PREFIX;
     }
@@ -143,7 +149,7 @@ class SignedUrls
 
                 return $type === self::TYPE_EMBED
                     ? $library->getPlayerToken($subject, $expires)
-                    : $library->getPlaybackToken($subject, $expires);
+                    : $library->getPlaybackToken($subject, $expires, $data['q'] ?? []);
             },
             $content
         ) ?? $content;
@@ -166,7 +172,7 @@ class SignedUrls
 
     /**
      * @param string $payload
-     * @return array{h: string, p: string, t?: string}|null
+     * @return array{h: string, p: string, t?: string, q?: array}|null
      */
     private static function _decode(string $payload): ?array
     {

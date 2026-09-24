@@ -354,18 +354,17 @@ class BunnyVideo extends Model
         $library = $this->getLibrary();
         $filename = $this->metadata['thumbnailFileName'] ?? 'thumbnail.jpg';
 
-        if ($library->optimizerEnabled && ($width || $height)) {
-            $params = array_filter([
-                'width' => $width,
-                'height' => $height,
-            ]);
-            $filename .= '?' . http_build_query($params);
-        }
+        // Passed separately rather than appended to the filename: on a token-authenticated
+        // library the token has to cover them, and it covers query params apart from the path
+        $params = $library->optimizerEnabled ? array_filter([
+            'width' => $width,
+            'height' => $height,
+        ]) : [];
 
         // Not deferred: a thumbnail URL is routinely handed to a server-side transformer --
         // Imager fetches it, transforms it and serves a local copy -- and a placeholder would
         // reach Bunny unsigned
-        return $library->getVideoUrl($this->videoGuid, $filename);
+        return $library->getVideoUrl($this->videoGuid, $filename, params: $params);
     }
 
     /**
