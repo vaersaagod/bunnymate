@@ -1,6 +1,6 @@
 # BunnyMate Changelog
 
-## Unreleased
+## 3.1.0 - 2026-09-24
 
 > [!IMPORTANT]
 > **This release renames three settings, and the old names are silently ignored.**
