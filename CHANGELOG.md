@@ -1,6 +1,6 @@
 # BunnyMate Changelog
 
-## Unreleased
+## 3.2.0 - 2026-09-25
 
 ### Added
 - Added `asset.bunnyVideo.mp4Size(resolution)` and `mp4Sizes`, the sizes of the MP4 renditions in bytes. Bunny's API doesn't report them, so they're measured when a video's metadata is refreshed, along with which renditions exist. A size that can't be read keeps the one measured last time.
