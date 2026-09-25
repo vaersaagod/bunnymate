@@ -112,10 +112,15 @@ class Videos extends Component
             $record->status = $status->value;
         }
         if ($metadata !== null) {
-            $metadata = $this->_withMp4Resolutions($metadata, $libraryHandle, $videoGuid);
+            $existing = Json::decodeIfJson($record->getOldAttribute('metadata') ?? '') ?: [];
+            $metadata = $this->_withMp4Resolutions(
+                $metadata,
+                $libraryHandle,
+                $videoGuid,
+                (array)($existing[BunnyVideo::MP4_SIZES_KEY] ?? []),
+            );
             // Bunny knows nothing of the uploaded filename or what we measured, so carry those
             // across a refresh that didn't replace them
-            $existing = Json::decodeIfJson($record->getOldAttribute('metadata') ?? '') ?: [];
             foreach ([BunnyVideo::ORIGINAL_FILENAME_KEY, BunnyVideo::MP4_RESOLUTIONS_KEY, BunnyVideo::MP4_SIZES_KEY] as $key) {
                 if (!isset($metadata[$key]) && isset($existing[$key])) {
                     $metadata[$key] = $existing[$key];
@@ -337,9 +342,10 @@ class Videos extends Component
      * @param array $metadata
      * @param string $libraryHandle
      * @param string $videoGuid
+     * @param array<string, int> $previousSizes Sizes stored from the last refresh, keyed by resolution
      * @return array
      */
-    private function _withMp4Resolutions(array $metadata, string $libraryHandle, string $videoGuid): array
+    private function _withMp4Resolutions(array $metadata, string $libraryHandle, string $videoGuid, array $previousSizes = []): array
     {
         if (!empty($metadata[BunnyVideo::MP4_RESOLUTIONS_KEY])) {
             return $metadata;
@@ -373,9 +379,18 @@ class Videos extends Component
                 Craft::error("Unable to size the MP4 renditions for \"$videoGuid\": {$e->getMessage()}", __METHOD__);
                 $sizes = [];
             }
-            // Left unset when nothing could be read, so the sizes from last time carry over
-            if (!empty($sizes)) {
-                $metadata[BunnyVideo::MP4_SIZES_KEY] = $sizes;
+            // A rendition whose size couldn't be read this time keeps the one it had, as long as
+            // it still exists, so one slow request doesn't blank a size until the next refresh
+            $merged = [];
+            foreach ($resolutions as $resolution) {
+                $size = $sizes[$resolution] ?? $previousSizes[$resolution] ?? null;
+                if (is_numeric($size) && $size > 0) {
+                    $merged[$resolution] = (int)$size;
+                }
+            }
+            // Left unset when there's nothing at all, so the sizes from last time carry over
+            if (!empty($merged)) {
+                $metadata[BunnyVideo::MP4_SIZES_KEY] = $merged;
             }
         }
 

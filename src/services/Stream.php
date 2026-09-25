@@ -30,6 +30,15 @@ class Stream extends Component
     /** @see https://bunny.net/docs/stream/http-api/ */
     public const API_BASE = 'https://video.bunnycdn.com';
 
+    /**
+     * How long a HEAD request for one of a video's files may take, in seconds.
+     *
+     * These probe which MP4 renditions exist and how large each file is. They run one after
+     * another inside a webhook request and the Bunny Stream panel's Refresh button, so they're
+     * kept short: a probe that times out leaves what was stored from last time in place.
+     */
+    private const HEAD_REQUEST_TIMEOUT = 4;
+
     // Private Properties
     // =========================================================================
 
@@ -234,7 +243,7 @@ class Stream extends Component
     {
         $client = Craft::createGuzzleClient([
             'http_errors' => false,
-            'timeout' => 10,
+            'timeout' => self::HEAD_REQUEST_TIMEOUT,
         ]);
 
         foreach (array_reverse($available) as $index => $resolution) {
@@ -330,7 +339,7 @@ class Stream extends Component
     private function _getFileSize(VideoLibrary $library, string $videoGuid, string $file): ?int
     {
         try {
-            $response = Craft::createGuzzleClient(['http_errors' => false, 'timeout' => 10])
+            $response = Craft::createGuzzleClient(['http_errors' => false, 'timeout' => self::HEAD_REQUEST_TIMEOUT])
                 ->head($library->getVideoUrl($videoGuid, $file), [
                     'headers' => [
                         // Libraries block referrer-less requests by default

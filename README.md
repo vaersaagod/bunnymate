@@ -524,7 +524,7 @@ The MP4 renditions download the same way, with a resolution, and each file's siz
 </ul>
 ```
 
-Bunny's API reports no per-file sizes, only a `storageSize` covering every file a video has, so BunnyMate asks for each one with a HEAD request when it refreshes a video's metadata, along with which renditions exist. That happens once a video finishes encoding, not per page view. Videos last refreshed before BunnyMate measured rendition sizes have none until they're refreshed again, which [`refresh-existing`](#console-commands) does for all of them at once.
+Bunny's API reports no per-file sizes, only a `storageSize` covering every file a video has, so BunnyMate asks for each one with a HEAD request when it refreshes a video's metadata, along with which renditions exist. That happens once a video finishes encoding, not per page view. Each request gives up after a few seconds, and a size that can't be read keeps the one measured last time. Videos last refreshed before BunnyMate measured rendition sizes have none until they're refreshed again, which [`refresh-existing`](#console-commands) does for all of them at once.
 
 Front-end downloads are governed by `allowOriginalDownloads`. Control panel downloads aren't, and are gated on the asset's own view permission instead.
 
