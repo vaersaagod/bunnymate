@@ -101,9 +101,10 @@ class Videos extends Component
         }
         if ($metadata !== null) {
             $metadata = $this->_withMp4Resolutions($metadata, $libraryHandle, $videoGuid);
-            // Bunny doesn't know the uploaded filename, so carry ours across refreshes
+            // Bunny knows nothing of the uploaded filename or what we measured, so carry those
+            // across a refresh that didn't replace them
             $existing = Json::decodeIfJson($record->getOldAttribute('metadata') ?? '') ?: [];
-            foreach ([BunnyVideo::ORIGINAL_FILENAME_KEY, BunnyVideo::MP4_RESOLUTIONS_KEY] as $key) {
+            foreach ([BunnyVideo::ORIGINAL_FILENAME_KEY, BunnyVideo::MP4_RESOLUTIONS_KEY, BunnyVideo::MP4_SIZES_KEY] as $key) {
                 if (!isset($metadata[$key]) && isset($existing[$key])) {
                     $metadata[$key] = $existing[$key];
                 }
@@ -126,6 +127,39 @@ class Videos extends Component
         if ($metadata !== null) {
             $this->_syncAssetAttributes($assetId, Json::decodeIfJson($record->metadata) ?: []);
         }
+
+        return true;
+    }
+
+    /**
+     * Refreshes an asset's video from Bunny: status, metadata, MP4 renditions and file sizes.
+     *
+     * Bunny fires no webhook when a video is deleted, so this is also where that surfaces. A
+     * video Bunny no longer has is marked missing rather than removed.
+     *
+     * @param BunnyVideo $video
+     * @return bool Whether Bunny still has the video
+     * @throws InvalidConfigException if the video's library isn't configured
+     * @since 3.2.0
+     */
+    public function refreshVideo(BunnyVideo $video): bool
+    {
+        $library = $video->getLibrary();
+        $stream = BunnyMate::getInstance()->getStream();
+        $metadata = $stream->getVideo($library, $video->videoGuid);
+
+        if ($metadata === null) {
+            $this->markVideoMissing($video->assetId);
+            return false;
+        }
+
+        $this->saveVideo(
+            $video->assetId,
+            $library->handle,
+            $video->videoGuid,
+            VideoStatus::tryFrom((int)($metadata['status'] ?? 0)),
+            $metadata,
+        );
 
         return true;
     }
@@ -283,10 +317,10 @@ class Videos extends Component
     // =========================================================================
 
     /**
-     * Adds the renditions an MP4 actually exists for to a video's metadata.
+     * Adds the renditions an MP4 actually exists for, and their sizes, to a video's metadata.
      *
-     * Bunny doesn't report this, so it's measured once, when a video is finished encoding and
-     * hasn't been measured before. Until then the model falls back to a conservative cap.
+     * Bunny reports neither, so they're measured once a video is finished encoding. Until then
+     * the model falls back to a conservative cap, and knows no sizes.
      *
      * @param array $metadata
      * @param string $libraryHandle
@@ -303,6 +337,7 @@ class Videos extends Component
         }
         if (!($metadata['hasMP4Fallback'] ?? false)) {
             $metadata[BunnyVideo::MP4_RESOLUTIONS_KEY] = [];
+            $metadata[BunnyVideo::MP4_SIZES_KEY] = [];
             return $metadata;
         }
 
@@ -318,6 +353,18 @@ class Videos extends Component
 
         if (!empty($resolutions)) {
             $metadata[BunnyVideo::MP4_RESOLUTIONS_KEY] = $resolutions;
+
+            try {
+                $stream = BunnyMate::getInstance()->getStream();
+                $sizes = $stream->getMp4Sizes($stream->getLibrary($libraryHandle), $videoGuid, $resolutions);
+            } catch (\Throwable $e) {
+                Craft::error("Unable to size the MP4 renditions for \"$videoGuid\": {$e->getMessage()}", __METHOD__);
+                $sizes = [];
+            }
+            // Left unset when nothing could be read, so the sizes from last time carry over
+            if (!empty($sizes)) {
+                $metadata[BunnyVideo::MP4_SIZES_KEY] = $sizes;
+            }
         }
 
         if (!isset($metadata[BunnyVideo::ORIGINAL_SIZE_KEY]) && ($metadata['hasOriginal'] ?? false)) {

@@ -1,5 +1,13 @@
 # BunnyMate Changelog
 
+## Unreleased
+
+### Added
+- Added `asset.bunnyVideo.mp4Size(resolution)` and `mp4Sizes`, the sizes of the MP4 renditions in bytes. Bunny's API doesn't report them, so they're measured when a video's metadata is refreshed, along with which renditions exist.
+- Added the `bunnymate/videos/refresh-existing` command, which refreshes every video from Bunny as the Bunny Stream panel's Refresh button does. Run it after upgrading to measure rendition sizes for existing videos.
+- Added `Videos::refreshVideo()`.
+- Added a complete settings reference, and a section on the console commands, to the README.
+
 ## 3.1.1 - 2026-09-25
 
 ### Fixed

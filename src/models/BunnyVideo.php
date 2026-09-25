@@ -32,6 +32,7 @@ use yii\base\InvalidConfigException;
  * @property-read string|null $originalFilename
  * @property-read string|null $downloadUrl
  * @property-read int|null $originalSize
+ * @property-read array<string, int> $mp4Sizes
  * @property-read float|null $aspectRatio
  * @property-read array $mp4Sources
  *
@@ -52,6 +53,9 @@ class BunnyVideo extends Model
 
     /** The metadata key the original file's size is stored under */
     public const ORIGINAL_SIZE_KEY = 'bunnymateOriginalSize';
+
+    /** The metadata key the MP4 renditions' sizes are stored under, keyed by resolution */
+    public const MP4_SIZES_KEY = 'bunnymateMp4Sizes';
 
     /**
      * The highest rendition assumed to have an MP4, until one is measured.
@@ -425,6 +429,42 @@ class BunnyVideo extends Model
     {
         $size = $this->metadata[self::ORIGINAL_SIZE_KEY] ?? null;
         return is_numeric($size) && $size > 0 ? (int)$size : null;
+    }
+
+    /**
+     * Returns the size of an MP4 rendition in bytes, if it's known.
+     *
+     * Measured along with the renditions themselves, once a video finishes encoding. Bunny's
+     * API reports no per-file sizes, so a video last refreshed before BunnyMate measured them
+     * has none until it's refreshed again.
+     *
+     * @param string $resolution e.g. `'720p'`
+     * @return int|null
+     * @since 3.2.0
+     */
+    public function getMp4Size(string $resolution): ?int
+    {
+        return $this->getMp4Sizes()[$resolution] ?? null;
+    }
+
+    /**
+     * Returns the sizes of the MP4 renditions in bytes, keyed by resolution, ascending.
+     *
+     * Only renditions whose size is known are included.
+     *
+     * @return array<string, int>
+     * @since 3.2.0
+     */
+    public function getMp4Sizes(): array
+    {
+        $sizes = $this->metadata[self::MP4_SIZES_KEY] ?? null;
+        if (!is_array($sizes)) {
+            return [];
+        }
+        return array_filter(
+            array_map(static fn(mixed $size): int => is_numeric($size) ? (int)$size : 0, $sizes),
+            static fn(int $size): bool => $size > 0,
+        );
     }
 
     /**

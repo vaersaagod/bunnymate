@@ -192,6 +192,9 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `embedUrl(params)` | Bunny's iframe player URL |
 | `hasOriginal` / `originalUrl` | The uploaded file itself, played in the browser. See [The original file](#the-original-file). |
 | `downloadUrl` | The same file, served as a download with its original filename |
+| `downloadUrl(resolution)` | An MP4 rendition, served as a download. Null for a rendition that wasn't produced. |
+| `originalSize` | The original file's size in bytes. Null when the library doesn't keep originals. |
+| `mp4Size(resolution)` / `mp4Sizes` | An MP4 rendition's size in bytes, or all of them keyed by resolution. See [Download lists](#download-lists). |
 | `originalFilename` | What the file was uploaded as, before being renamed to `.mp4` |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
 | `library` / `libraryHandle` | The library the video lives in. Recorded by Bunny ID, so renaming a handle in `videoLibraries` doesn't strand existing videos. |
@@ -497,6 +500,27 @@ Use `downloadUrl` rather than `originalUrl` for anything meant to save the file.
 
 `downloadUrl` goes through Craft, which sets the header and the filename and streams the file on from Bunny. Because uploads are renamed to `.mp4`, the filename it uses is the one the file was uploaded as, kept alongside the video's metadata; videos uploaded before that was recorded fall back to the asset's filename.
 
+#### Download lists
+
+The MP4 renditions download the same way, with a resolution, and each file's size is known, so a list of downloads can say what each one weighs:
+
+```twig
+{% set video = asset.bunnyVideo %}
+<ul>
+    {% if video.hasOriginal %}
+        <li><a href="{{ video.downloadUrl }}">{{ 'Original'|t }}</a> {{ video.originalSize|filesize }}</li>
+    {% endif %}
+    {% for resolution in video.availableMp4Resolutions %}
+        <li>
+            <a href="{{ video.downloadUrl(resolution) }}">{{ resolution }}</a>
+            {% if video.mp4Size(resolution) %}{{ video.mp4Size(resolution)|filesize }}{% endif %}
+        </li>
+    {% endfor %}
+</ul>
+```
+
+Bunny's API reports no per-file sizes, only a `storageSize` covering every file a video has, so BunnyMate asks for each one with a HEAD request when it refreshes a video's metadata, along with which renditions exist. That happens once a video finishes encoding, not per page view. Videos last refreshed before BunnyMate measured rendition sizes have none until they're refreshed again, which [`refresh-existing`](#console-commands) does for all of them at once.
+
 Front-end downloads are governed by `allowOriginalDownloads`. Control panel downloads aren't, and are gated on the asset's own view permission instead.
 
 This matters more than it might look, because assets uploaded straight to Bunny hold no file of their own: the original on Bunny is the only copy of what was uploaded, and this is how to get it back.
@@ -598,6 +622,109 @@ When Craft's garbage collection eventually purges it, the video is deleted too. 
 That distinction matters. A null row is definitely a purged asset's video, never a video someone uploaded through Bunny's dashboard, so nothing has to guess and nothing needs scheduling. A video that fails to delete keeps its row and is retried on the next run.
 
 If the uploader can't confirm in time that a folder is set up for Bunny Stream, it lets Craft handle the upload normally. The video still reaches Bunny via the fetch fallback, just without bypassing PHP's upload limits.
+
+## Console commands
+
+### `bunnymate/videos/create-missing`
+
+Sends video assets in mapped volumes that have no Bunny video yet to Bunny Stream, by queuing a job for each that has Bunny fetch the file from the asset's URL. It's for a volume that already held videos when it was mapped to a library. It reports what it found per volume and asks before queuing anything, and assets that already have a video are skipped, so it's safe to re-run and to interrupt.
+
+```
+php craft bunnymate/videos/create-missing
+```
+
+Bunny fetches over the public internet, so this has to run where the assets' URLs are publicly reachable. See [Videos that were already there](#videos-that-were-already-there).
+
+### `bunnymate/videos/refresh-existing`
+
+Refreshes every video asset that has a Bunny video, exactly as the **Refresh** button in the [Bunny Stream panel](#the-bunny-stream-panel) does: status, metadata, which MP4 renditions exist and how large each file is. Videos Bunny no longer has are marked missing. It reports how many videos it found and asks before refreshing any.
+
+```
+php craft bunnymate/videos/refresh-existing
+```
+
+Worth running after upgrading to a version that stores something new about videos, since existing ones only pick it up the next time they're refreshed. It talks to Bunny directly rather than queuing: one API request per video, plus a HEAD request per MP4 rendition and one for the original.
+
+Both commands take the same options:
+
+| Option | |
+| --- | --- |
+| `--volume` | Only this volume. Must be one that's mapped to a library. |
+| `--limit` | Stop after this many assets, for working through a large volume in batches |
+| `--dry-run` | Report what would be done, and do nothing |
+
+## Settings reference
+
+Every setting goes in `config/bunnymate.php`. Credentials and hostnames can be environment variables, e.g. `'$BUNNY_API_KEY'`.
+
+### General
+
+| Setting | Default | |
+| --- | --- | --- |
+| `pullingEnabled` | `true` | Whether `bunnyPullUrl()` returns pull zone URLs at all. Off, it returns the path on the site's own origin. Asset URLs on a Bunny Storage filesystem ignore this, since those files have no origin to fall back on. |
+| `pullZones` | `[]` | Pull zones, keyed by a handle of your choosing. See [Pull zones](#pull-zones). |
+| `defaultPullZone` | `null` | The handle of the pull zone `bunnyPullUrl()` uses when none is given |
+| `apiKey` | `null` | The account API key from the Bunny dashboard, used to purge the CDN cache. Not a storage zone password. |
+| `purgeEnabled` | `true` | Whether files changed on a Bunny Storage filesystem are purged from the CDN cache. Individual URLs only, never the whole pull zone. |
+
+### Bunny Stream
+
+| Setting | Default | |
+| --- | --- | --- |
+| `videoLibraries` | `[]` | Video libraries, keyed by a handle of your choosing. See [Video libraries](#video-libraries). |
+| `volumeVideoLibraries` | `[]` | Maps volume handles to library handles. This is what turns Bunny Stream on: volumes not listed are left alone. |
+| `autoUploadVideos` | `true` | Whether videos reaching a mapped volume other than through the TUS uploader are sent to Bunny, which fetches them from the asset's URL. See [Videos that arrive some other way](#videos-that-arrive-some-other-way). |
+| `writePlaceholderFiles` | `true` | Whether an empty file is written for videos uploaded straight to Bunny, so Craft's asset indexer doesn't list them as missing. See [Placeholder files](#placeholder-files). |
+| `maxConcurrentUploads` | `1` | How many videos the control panel uploader sends to Bunny at once. The rest of a batch is queued. |
+| `overrideAssetUrls` | `true` | Whether `asset.url` returns the Bunny playback URL for videos. See [Asset URLs](#asset-urls). |
+| `videoUrlRendition` | `null` | Which MP4 rendition `asset.url` points at, e.g. `'1080p'`. Null uses the highest one produced. |
+| `hlsJsUrl` | jsDelivr's `hls.js@1` | Where the player loads hls.js from, for adaptive playback outside Safari. Null never loads it, and the player falls back to an MP4 rendition. |
+| `defaultMinResolution` | `null` | The lowest rendition adaptive playback settles on, e.g. `'720p'`. HLS only. |
+| `defaultMaxResolution` | `null` | The highest rendition adaptive playback uses. HLS only. |
+| `lazyloadBunnyVideo` | `true` | Whether rendered video tags hold their sources in `data-src` until scrolled into view |
+| `deferSignedUrls` | `false` | Whether signed playback URLs are signed as the response goes out rather than when rendered, so an expiring token never lands in a `{% cache %}` block. See [Access control](#access-control). |
+| `allowOriginalDownloads` | `true` | Whether original files can be downloaded from the front end. Control panel downloads aren't affected. |
+| `useImagerForThumbnailTransforms` | `true` | Whether control panel thumbnails are resized with Imager X, where it's installed. See [Control panel thumbnails](#control-panel-thumbnails). |
+| `imagerTransformDefaults` | `null` | Passed to Imager's `transformImage()` as transform defaults when resizing a thumbnail |
+| `imagerTransformConfigOverrides` | `null` | Passed to Imager's `transformImage()` as config overrides when resizing a thumbnail. `curlOptions` merges with the referrer BunnyMate sets. |
+
+### Video libraries
+
+Each entry in `videoLibraries`:
+
+| Key | Default | |
+| --- | --- | --- |
+| `id` | — | The library's ID in Bunny. Required. |
+| `apiKey` | — | The library's API key. Grants write access, so it stays server-side. Required. |
+| `readOnlyApiKey` | — | The library's read-only API key, which doubles as the webhook signing secret. Required. |
+| `hostname` | — | The library's playback hostname, e.g. `vz-xxxxxxxx-xxx.b-cdn.net`. Required. |
+| `tokenAuthKey` | `null` | The pull zone's security key, needed when CDN token authentication is enabled on the library |
+| `playerTokenAuthEnabled` | `false` | Set to match the library's embed view token authentication. Needs `tokenAuthKey`. |
+| `signedUrlDuration` | `3600` | How long signed URLs stay valid: seconds, or a date interval string such as `'PT1H'` |
+| `optimizerEnabled` | `false` | Set when Bunny Optimizer is enabled on the library's pull zone, so thumbnails can be requested at the size wanted |
+| `tusUploadsEnabled` | `true` | Whether the control panel uploader sends this library's videos straight to Bunny over TUS. Off leaves its volumes to Craft's own uploader. See [Uploading](#uploading). |
+| `collectionId` | `null` | A collection in the library to create videos in |
+
+### Pull zones
+
+Each entry in `pullZones`:
+
+| Key | Default | |
+| --- | --- | --- |
+| `hostname` | — | The pull zone's hostname, optionally with a path prefix. Required. |
+| `enabled` | `true` | Whether `bunnyPullUrl()` uses this pull zone. Off, it behaves as `pullingEnabled` off does, and Bunny Storage filesystems ignore it the same way. |
+
+### Bunny Storage filesystem
+
+These are set on the filesystem in the control panel, under **Settings → Filesystems**, rather than in `config/bunnymate.php`. Every field takes an environment variable.
+
+| Field | |
+| --- | --- |
+| Storage zone | The storage zone's name |
+| Access key | The storage zone's password, not the account API key |
+| Region | The storage zone's primary region |
+| Subfolder | An optional folder within the zone to keep this filesystem's files in |
+| Pull zone | The pull zone asset URLs are built from, from `pullZones` |
 
 ## Price, license and support
 

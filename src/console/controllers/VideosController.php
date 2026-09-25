@@ -180,4 +180,98 @@ class VideosController extends Controller
         return ExitCode::OK;
     }
 
+    /**
+     * Refreshes every video asset's Bunny Stream video, as the panel's Refresh button does.
+     *
+     * Each is pulled down from Bunny again: status, metadata, which MP4 renditions exist and
+     * how large each file is. Videos Bunny no longer has are marked missing. Worth running
+     * after an upgrade that stores something new about videos, since existing ones only pick
+     * it up when they're next refreshed.
+     *
+     * It talks to Bunny directly rather than queuing anything: one API request per video, and
+     * a HEAD request per MP4 rendition and for the original.
+     *
+     * @return int
+     * @since 3.2.0
+     */
+    public function actionRefreshExisting(): int
+    {
+        $settings = BunnyMate::getInstance()->getSettings();
+        $videos = BunnyMate::getInstance()->getVideos();
+
+        $handles = array_keys($settings->volumeVideoLibraries);
+
+        if ($this->volume !== null) {
+            if (!in_array($this->volume, $handles, true)) {
+                $this->stderr("Volume \"$this->volume\" isn't mapped to a video library in volumeVideoLibraries." . PHP_EOL, Console::FG_RED);
+                return ExitCode::CONFIG;
+            }
+            $handles = [$this->volume];
+        }
+
+        // Every asset with a video, wherever its volume is mapped now: a video attached before
+        // a mapping changed still belongs to its library
+        $query = Asset::find()
+            ->kind(Asset::KIND_VIDEO)
+            ->bunnyVideo(true)
+            ->status(null)
+            ->orderBy(['dateCreated' => SORT_ASC]);
+
+        if ($this->volume !== null) {
+            $query->volume($handles);
+        }
+
+        $total = (int)$query->count();
+
+        if ($total === 0) {
+            $this->stdout('No video assets have a Bunny Stream video, so there is nothing to refresh.' . PHP_EOL);
+            return ExitCode::OK;
+        }
+
+        $count = $this->limit !== null ? min($this->limit, $total) : $total;
+
+        $this->stdout("$total video asset" . ($total === 1 ? '' : 's') . ' with a Bunny Stream video' . ($this->volume !== null ? " in $this->volume" : '') . '.' . PHP_EOL);
+        if ($count < $total) {
+            $this->stdout("Limiting to $count of $total." . PHP_EOL);
+        }
+
+        if ($this->dryRun) {
+            $this->stdout('Dry run: nothing refreshed.' . PHP_EOL, Console::FG_YELLOW);
+            return ExitCode::OK;
+        }
+
+        if (!$this->confirm("Refresh $count video" . ($count === 1 ? '' : 's') . ' from Bunny Stream?')) {
+            return ExitCode::OK;
+        }
+
+        $refreshed = 0;
+        $missing = 0;
+        $failed = 0;
+
+        foreach ($query->limit($this->limit)->each() as $asset) {
+            /** @var Asset $asset */
+            $video = $videos->getVideoForAsset($asset);
+            if (!$video) {
+                continue;
+            }
+            try {
+                if ($videos->refreshVideo($video)) {
+                    $refreshed++;
+                    $this->stdout("  refreshed #$asset->id $asset->filename" . PHP_EOL, Console::FG_GREY);
+                } else {
+                    $missing++;
+                    $this->stdout("  missing   #$asset->id $asset->filename: Bunny no longer has it" . PHP_EOL, Console::FG_YELLOW);
+                }
+            } catch (\Throwable $e) {
+                $failed++;
+                Craft::error("Unable to refresh the video for asset $asset->id: {$e->getMessage()}", __METHOD__);
+                $this->stderr("  failed    #$asset->id $asset->filename: {$e->getMessage()}" . PHP_EOL, Console::FG_RED);
+            }
+        }
+
+        $this->stdout("Refreshed $refreshed, $missing missing on Bunny, $failed failed." . PHP_EOL, $failed ? Console::FG_YELLOW : Console::FG_GREEN);
+
+        return $failed ? ExitCode::UNSPECIFIED_ERROR : ExitCode::OK;
+    }
+
 }

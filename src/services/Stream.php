@@ -271,26 +271,31 @@ class Stream extends Component
      */
     public function getOriginalSize(VideoLibrary $library, string $videoGuid): ?int
     {
-        try {
-            $response = Craft::createGuzzleClient(['http_errors' => false, 'timeout' => 10])
-                ->head($library->getVideoUrl($videoGuid, 'original'), [
-                    'headers' => [
-                        // Libraries block referrer-less requests by default
-                        'Referer' => UrlHelper::baseSiteUrl(),
-                    ],
-                ]);
-        } catch (GuzzleException $e) {
-            Craft::warning("Unable to size the original for \"$videoGuid\": {$e->getMessage()}", __METHOD__);
-            return null;
+        return $this->_getFileSize($library, $videoGuid, 'original');
+    }
+
+    /**
+     * Returns the sizes of a video's MP4 renditions, in bytes, keyed by resolution.
+     *
+     * Bunny's API has no per-file sizes, so each rendition is asked for directly: one HEAD
+     * request apiece, and only when a video's metadata is refreshed.
+     *
+     * @param VideoLibrary $library
+     * @param string $videoGuid
+     * @param string[] $resolutions Renditions an MP4 exists for, e.g. from [[detectMp4Resolutions()]]
+     * @return array<string, int> Those whose size could be read
+     * @since 3.2.0
+     */
+    public function getMp4Sizes(VideoLibrary $library, string $videoGuid, array $resolutions): array
+    {
+        $sizes = [];
+        foreach ($resolutions as $resolution) {
+            $size = $this->_getFileSize($library, $videoGuid, "play_$resolution.mp4");
+            if ($size !== null) {
+                $sizes[$resolution] = $size;
+            }
         }
-
-        if ($response->getStatusCode() >= 400) {
-            return null;
-        }
-
-        $length = (int)$response->getHeaderLine('Content-Length');
-
-        return $length > 0 ? $length : null;
+        return $sizes;
     }
 
     /**
@@ -313,6 +318,38 @@ class Stream extends Component
 
     // Private Methods
     // =========================================================================
+
+    /**
+     * Returns the size of one of a video's files, in bytes, from a HEAD request.
+     *
+     * @param VideoLibrary $library
+     * @param string $videoGuid
+     * @param string $file e.g. `original`, `play_720p.mp4`
+     * @return int|null Null when the file isn't there or reports no length
+     */
+    private function _getFileSize(VideoLibrary $library, string $videoGuid, string $file): ?int
+    {
+        try {
+            $response = Craft::createGuzzleClient(['http_errors' => false, 'timeout' => 10])
+                ->head($library->getVideoUrl($videoGuid, $file), [
+                    'headers' => [
+                        // Libraries block referrer-less requests by default
+                        'Referer' => UrlHelper::baseSiteUrl(),
+                    ],
+                ]);
+        } catch (GuzzleException $e) {
+            Craft::warning("Unable to size \"$file\" for \"$videoGuid\": {$e->getMessage()}", __METHOD__);
+            return null;
+        }
+
+        if ($response->getStatusCode() >= 400) {
+            return null;
+        }
+
+        $length = (int)$response->getHeaderLine('Content-Length');
+
+        return $length > 0 ? $length : null;
+    }
 
     /**
      * Sends a request to the Bunny Stream API and returns the decoded response.

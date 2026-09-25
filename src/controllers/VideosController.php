@@ -7,7 +7,6 @@ use craft\elements\Asset;
 use craft\web\Controller;
 
 use vaersaagod\bunnymate\BunnyMate;
-use vaersaagod\bunnymate\enums\VideoStatus;
 
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
@@ -58,14 +57,9 @@ class VideosController extends Controller
             throw new BadRequestHttpException("Asset $assetId has no Bunny Stream video");
         }
 
-        $stream = $plugin->getStream();
-        $library = $video->getLibrary();
-        $metadata = $stream->getVideo($library, $video->videoGuid);
-
-        if ($metadata === null) {
+        if (!$videos->refreshVideo($video)) {
             // Bunny fires no webhook when a video is deleted, so this is the only way it
-            // surfaces. Record it, and hand back a panel that says so.
-            $videos->markVideoMissing($asset->id);
+            // surfaces. It's been recorded; hand back a panel that says so.
             return $this->asSuccess(
                 Craft::t('bunnymate', 'Bunny no longer has this video.'),
                 ['html' => BunnyMate::getInstance()->renderVideoPanel(
@@ -74,14 +68,6 @@ class VideosController extends Controller
                 )],
             );
         }
-
-        $videos->saveVideo(
-            $asset->id,
-            $library->handle,
-            $video->videoGuid,
-            VideoStatus::tryFrom((int)($metadata['status'] ?? 0)),
-            $metadata,
-        );
 
         // Hand back a freshly rendered panel, so the sidebar can swap itself out
         $fresh = Craft::$app->getAssets()->getAssetById($assetId);
