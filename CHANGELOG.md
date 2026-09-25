@@ -1,6 +1,6 @@
 # BunnyMate Changelog
 
-## Unreleased
+## 3.1.1 - 2026-09-25
 
 ### Fixed
 - Fixed template caches not being invalidated when a video's status or metadata changed, so a `{% cache %}` block around `bunnyVideo('ready')` could keep leaving out a video that had finished encoding. Changes to BunnyMate's own video records now invalidate caches for the asset, as an element save would.
