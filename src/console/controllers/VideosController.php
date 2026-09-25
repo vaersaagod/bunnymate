@@ -47,6 +47,21 @@ class VideosController extends Controller
     }
 
     /**
+     * @inheritdoc
+     *
+     * Without a terminal there's no one to answer, so the prompt is skipped and the command
+     * goes ahead, as it does with `--interactive=0`. Otherwise a scheduled run would read an
+     * empty answer from STDIN, take the default, and quietly do nothing every time.
+     */
+    public function confirm($message, $default = false): bool
+    {
+        if ($this->interactive && defined('STDIN') && !stream_isatty(STDIN)) {
+            return true;
+        }
+        return parent::confirm($message, $default);
+    }
+
+    /**
      * Creates Bunny Stream videos for video assets that don't have one yet.
      *
      * For a volume that's been mapped to a library after it already held videos -- a site
@@ -240,7 +255,7 @@ class VideosController extends Controller
             return ExitCode::OK;
         }
 
-        if (!$this->confirm("Refresh $count video" . ($count === 1 ? '' : 's') . ' from Bunny Stream?')) {
+        if (!$this->confirm("Refresh $count video" . ($count === 1 ? '' : 's') . ' from Bunny Stream?', true)) {
             return ExitCode::OK;
         }
 

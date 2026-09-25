@@ -4,7 +4,7 @@
 
 ### Added
 - Added `asset.bunnyVideo.mp4Size(resolution)` and `mp4Sizes`, the sizes of the MP4 renditions in bytes. Bunny's API doesn't report them, so they're measured when a video's metadata is refreshed, along with which renditions exist.
-- Added the `bunnymate/videos/refresh-existing` command, which refreshes every video from Bunny as the Bunny Stream panel's Refresh button does. Run it after upgrading to measure rendition sizes for existing videos.
+- Added the `bunnymate/videos/refresh-existing` command, which refreshes every video from Bunny as the Bunny Stream panel's Refresh button does. Run it after upgrading to measure rendition sizes for existing videos. It runs unattended as it is: without a terminal, as under cron, it skips its prompt and goes ahead.
 - Added `Videos::refreshVideo()`.
 - Added a complete settings reference, and a section on the console commands, to the README.
 - `bunnyPullUrl()` now moves absolute URLs on other hosts onto the pull zone, keeping their path, query string and fragment, so `bunnyPullUrl('https://example.com/foo/video.mp4')` returns `https://my-zone.b-cdn.net/foo/video.mp4`. URLs on a site, volume, pull zone or video library BunnyMate knows are left as they were, as are assets on remote volumes, so an asset URL passed as a string isn't affected.

@@ -642,7 +642,7 @@ Bunny fetches over the public internet, so this has to run where the assets' URL
 
 ### `bunnymate/videos/refresh-existing`
 
-Refreshes every video asset that has a Bunny video, exactly as the **Refresh** button in the [Bunny Stream panel](#the-bunny-stream-panel) does: status, metadata, which MP4 renditions exist and how large each file is. Videos Bunny no longer has are marked missing. It reports how many videos it found and asks before refreshing any.
+Refreshes every video asset that has a Bunny video, exactly as the **Refresh** button in the [Bunny Stream panel](#the-bunny-stream-panel) does: status, metadata, which MP4 renditions exist and how large each file is. Videos Bunny no longer has are marked missing. It reports how many videos it found and asks before refreshing any, unless it's run without a terminal.
 
 ```
 php craft bunnymate/videos/refresh-existing
@@ -650,11 +650,13 @@ php craft bunnymate/videos/refresh-existing
 
 Worth running after upgrading to a version that stores something new about videos, since existing ones only pick it up the next time they're refreshed. It talks to Bunny directly rather than queuing: one API request per video, plus a HEAD request per MP4 rendition and one for the original.
 
-It's also worth scheduling, say nightly. Bunny sends no webhook when a video is deleted, so a refresh is the only way BunnyMate finds out. A scheduled run has no one to answer the prompt, so pass `--interactive=0`, or the prompt takes its default and the job quietly does nothing:
+It's also worth scheduling, say nightly. Bunny sends no webhook when a video is deleted, so a refresh is the only way BunnyMate finds out:
 
 ```
-php craft bunnymate/videos/refresh-existing --interactive=0
+php craft bunnymate/videos/refresh-existing
 ```
+
+Run without a terminal, as cron and Forge's scheduler run it, the prompt is skipped and the refresh goes ahead, so nothing needs adding. `--interactive=0` does the same anywhere, and at a terminal the prompt defaults to yes.
 
 Viewing stats (`views`, `averageWatchTime` and `totalWatchTime`) are refreshed along with everything else, but a change to those alone doesn't count as the video changing, so a scheduled run doesn't clear cached pages just because videos were watched.
 
