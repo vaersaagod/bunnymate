@@ -110,12 +110,18 @@ class Videos extends Component
             }
             $record->metadata = Json::encode($metadata);
         }
+        // Read before saving, which clears it
+        $changed = $record->getIsNewRecord() || !empty($record->getDirtyAttributes());
         if (!$record->save()) {
             Craft::error("Unable to save video for asset $assetId: " . Json::encode($record->getErrors()), __METHOD__);
             return false;
         }
 
         unset($this->_videosByAssetId[$assetId]);
+
+        if ($changed) {
+            $this->_invalidateCachesForAsset($assetId);
+        }
 
         if ($metadata !== null) {
             $this->_syncAssetAttributes($assetId, Json::decodeIfJson($record->metadata) ?: []);
@@ -202,6 +208,7 @@ class Videos extends Component
         }
         $record->delete();
         unset($this->_videosByAssetId[$assetId]);
+        $this->_invalidateCachesForAsset($assetId);
         return true;
     }
 
@@ -221,10 +228,14 @@ class Videos extends Component
             return false;
         }
         $record->status = VideoStatus::Missing->value;
+        $changed = !empty($record->getDirtyAttributes());
         if (!$record->save()) {
             return false;
         }
         unset($this->_videosByAssetId[$assetId]);
+        if ($changed) {
+            $this->_invalidateCachesForAsset($assetId);
+        }
         return true;
     }
 
@@ -323,6 +334,32 @@ class Videos extends Component
         }
 
         return $metadata;
+    }
+
+    /**
+     * Invalidates template caches holding an asset, after its video changed.
+     *
+     * Video rows live in BunnyMate's own table, so a change to one isn't an element save and
+     * Craft doesn't know to invalidate anything. A `{% cache %}` block around
+     * `bunnyVideo('ready')` would otherwise keep leaving out a video that has since become
+     * playable, or keep showing one Bunny no longer has. The asset's cache tags include its
+     * volume's, so cached asset queries are caught as well as cached markup for the asset.
+     *
+     * @param int $assetId
+     * @return void
+     */
+    private function _invalidateCachesForAsset(int $assetId): void
+    {
+        $asset = Craft::$app->getAssets()->getAssetById($assetId);
+        if (!$asset) {
+            // Already deleted, which invalidated its caches on the way out
+            return;
+        }
+        try {
+            Craft::$app->getElements()->invalidateCachesForElement($asset);
+        } catch (\Throwable $e) {
+            Craft::error("Unable to invalidate caches for asset $assetId: {$e->getMessage()}", __METHOD__);
+        }
     }
 
     /**
