@@ -24,6 +24,18 @@ use yii\base\InvalidConfigException;
 class Videos extends Component
 {
 
+    // Const Properties
+    // =========================================================================
+
+    /**
+     * Metadata keys that change whenever a video is watched.
+     *
+     * Still stored, but a change to these alone doesn't count as the video changing, so it
+     * doesn't invalidate template caches. Otherwise every refresh after a video had been
+     * watched would clear every cached page listing its volume.
+     */
+    private const VIEWING_STAT_KEYS = ['views', 'averageWatchTime', 'totalWatchTime'];
+
     // Public Properties
     // =========================================================================
 
@@ -112,7 +124,7 @@ class Videos extends Component
             $record->metadata = Json::encode($metadata);
         }
         // Read before saving, which clears it
-        $changed = $record->getIsNewRecord() || !empty($record->getDirtyAttributes());
+        $changed = $record->getIsNewRecord() || $this->_hasChanged($record);
         if (!$record->save()) {
             Craft::error("Unable to save video for asset $assetId: " . Json::encode($record->getErrors()), __METHOD__);
             return false;
@@ -381,6 +393,35 @@ class Videos extends Component
         }
 
         return $metadata;
+    }
+
+    /**
+     * Returns whether a video record has changed in any way that matters to a template.
+     *
+     * Viewing stats in its metadata are left out of the comparison. See [[VIEWING_STAT_KEYS]].
+     *
+     * @param VideoRecord $record
+     * @return bool
+     */
+    private function _hasChanged(VideoRecord $record): bool
+    {
+        $dirty = $record->getDirtyAttributes();
+
+        if (!array_key_exists('metadata', $dirty)) {
+            return !empty($dirty);
+        }
+
+        unset($dirty['metadata']);
+        if (!empty($dirty)) {
+            return true;
+        }
+
+        $ignored = array_flip(self::VIEWING_STAT_KEYS);
+        $old = array_diff_key(Json::decodeIfJson($record->getOldAttribute('metadata') ?? '') ?: [], $ignored);
+        $new = array_diff_key(Json::decodeIfJson($record->metadata ?? '') ?: [], $ignored);
+
+        // Loose on purpose: the same keys and values in a different order are no change
+        return $old != $new;
     }
 
     /**

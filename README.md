@@ -650,6 +650,14 @@ php craft bunnymate/videos/refresh-existing
 
 Worth running after upgrading to a version that stores something new about videos, since existing ones only pick it up the next time they're refreshed. It talks to Bunny directly rather than queuing: one API request per video, plus a HEAD request per MP4 rendition and one for the original.
 
+It's also worth scheduling, say nightly. Bunny sends no webhook when a video is deleted, so a refresh is the only way BunnyMate finds out. A scheduled run has no one to answer the prompt, so pass `--interactive=0`, or the prompt takes its default and the job quietly does nothing:
+
+```
+php craft bunnymate/videos/refresh-existing --interactive=0
+```
+
+Viewing stats (`views`, `averageWatchTime` and `totalWatchTime`) are refreshed along with everything else, but a change to those alone doesn't count as the video changing, so a scheduled run doesn't clear cached pages just because videos were watched.
+
 Both commands take the same options:
 
 | Option | |

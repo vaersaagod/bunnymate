@@ -9,6 +9,9 @@
 - Added a complete settings reference, and a section on the console commands, to the README.
 - `bunnyPullUrl()` now moves absolute URLs on other hosts onto the pull zone, keeping their path, query string and fragment, so `bunnyPullUrl('https://example.com/foo/video.mp4')` returns `https://my-zone.b-cdn.net/foo/video.mp4`. URLs on a site, volume, pull zone or video library BunnyMate knows are left as they were, as are assets on remote volumes, so an asset URL passed as a string isn't affected.
 
+### Changed
+- A change to a video's viewing stats (`views`, `averageWatchTime` and `totalWatchTime`) no longer invalidates template caches for its asset. They're still stored, but they change whenever a video is watched, so every refresh cleared every cached page listing the video's volume.
+
 ## 3.1.1 - 2026-09-25
 
 ### Fixed
