@@ -8,7 +8,7 @@ Keeping your bunny finely-tuned for a hoppy life, mate!
 
 BunnyMate integrates [Bunny](https://bunny.net) with Craft CMS. It does four things, and they can be used together or on their own:
 
-**Pull zone URLs.** A `bunnyPullUrl()` Twig function that rewrites any path or asset URL to a Bunny pull zone, so existing files are served from the CDN without moving them. Several pull zones can be configured and picked between per call. → [Usage](#usage)
+**Pull zone URLs.** A `bunnyPullUrl()` Twig function that rewrites any path, asset URL or absolute URL to a Bunny pull zone, so existing files are served from the CDN without moving them. Several pull zones can be configured and picked between per call. → [Usage](#usage)
 
 **A Bunny Storage filesystem.** Assets stored in a [Bunny Edge Storage](https://bunny.net/storage/) zone and served over the pull zone that fronts it. Asset URLs come from the pull zone config rather than a per-filesystem base URL, and changed files are purged from the CDN automatically. → [Bunny Storage filesystem](#bunny-storage-filesystem)
 
@@ -91,7 +91,12 @@ BunnyMate provides a global Twig function `bunnyPullUrl()`, which can be used to
 {% set bunnyUrl = bunnyPullUrl(siteUrl('lorem/ipsim') %}
 {% set bunnyUrl = bunnyPullUrl('lorem/ipsum') %}
 {% set bunnyUrl = bunnyPullUrl('/lorem/ipsum', 'anotherZone') %}
+{% set bunnyUrl = bunnyPullUrl('https://example.com/foo/bar/video.mp4') %}
 ```
+
+A path, or a URL on the current site, is moved onto the pull zone. So is an absolute URL on some other host, keeping its path, query string and fragment: `https://example.com/foo/bar/video.mp4` becomes `https://my-zone.b-cdn.net/foo/bar/video.mp4`. That's for a pull zone whose origin is that host; BunnyMate can't know what a pull zone pulls from, so it takes your word for it.
+
+A URL on a host BunnyMate already knows is left as it is: any site, any volume's base URL, any configured pull zone, and any video library. Those are what `asset.url` resolves to, so passing an asset's URL as a string, rather than the asset, doesn't move a file on S3 or Bunny Stream onto an origin that can't serve it. An asset on a remote volume keeps its URL for the same reason. With `pullingEnabled` off, or the pull zone disabled, absolute URLs are returned untouched.
 
 ## Bunny Storage filesystem
 
