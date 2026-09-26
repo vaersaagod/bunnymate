@@ -184,9 +184,11 @@ class VideoLibrary extends Model
         // A token covers exactly the path it was signed over. HLS needs the whole video
         // directory, because the master playlist points at per-rendition sub-playlists and
         // those at segments, each fetched as its own request.
-        $signPath = $directory ? "/$videoGuid/" : $path;
+        if ($directory && $this->getIsTokenAuthEnabled()) {
+            return $this->_signDirectoryUrl($path, "/$videoGuid/", $defer);
+        }
 
-        return $this->signUrl($url, $signPath, defer: $defer, params: $params);
+        return $this->signUrl($url, $path, defer: $defer, params: $params);
     }
 
     /**
@@ -351,6 +353,44 @@ class VideoLibrary extends Model
     public function matchesId(string|int $libraryId): bool
     {
         return (string)$libraryId === (string)$this->id;
+    }
+
+
+    // Private Methods
+    // =========================================================================
+
+    /**
+     * Signs a URL with a token covering a whole directory, carried in the path.
+     *
+     * A query string token only ever reaches the request it's on. Bunny's HLS playlists
+     * name their renditions, audio and segments by relative URL, and resolving a relative URL
+     * drops the query string, so every request after the master playlist went out unsigned
+     * and got a 403. With the token in a `bcdn_token=` path segment instead, relative URLs
+     * resolve beneath it and each request carries it. `token_path` is part of what's hashed,
+     * which is Bunny's own format for a directory token.
+     *
+     * @see https://bunny.net/docs/cdn/security/token-authentication/
+     *
+     * @param string $path e.g. `/{guid}/playlist.m3u8`
+     * @param string $signPath The directory the token covers, e.g. `/{guid}/`
+     * @param bool $defer
+     * @return string
+     */
+    private function _signDirectoryUrl(string $path, string $signPath, bool $defer): string
+    {
+        $params = ['token_path' => $signPath];
+
+        // As in signUrl(): on site requests, leave placeholders for the response to fill in.
+        // They're built from characters that are safe in a path segment.
+        if ($defer && SignedUrls::shouldDefer()) {
+            $token = SignedUrls::placeholder(SignedUrls::KIND_TOKEN, $this->handle, $signPath, params: $params);
+            $expires = SignedUrls::placeholder(SignedUrls::KIND_EXPIRES, $this->handle, $signPath, params: $params);
+        } else {
+            $expires = time() + $this->signedUrlDuration;
+            $token = $this->getPlaybackToken($signPath, $expires, $params);
+        }
+
+        return "https://$this->hostname/bcdn_token=$token&token_path=" . rawurlencode($signPath) . "&expires=$expires$path";
     }
 
 }

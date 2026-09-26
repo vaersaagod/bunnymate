@@ -1,5 +1,10 @@
 # BunnyMate Changelog
 
+## Unreleased
+
+### Fixed
+- Fixed HLS playback failing on libraries with CDN token authentication enabled. The token was carried in the playlist URL's query string, which Bunny's playlists don't pass on to the renditions, audio and segments they refer to by relative URL, so everything after the master playlist got a 403. HLS URLs now carry the token in the path, which every request beneath it inherits.
+
 ## 3.2.0 - 2026-09-25
 
 ### Added

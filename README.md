@@ -584,6 +584,8 @@ With it off and nothing else configured, playback URLs are public to anyone hold
 
 For real access control, enable **CDN token authentication** on the library and set `tokenAuthKey` to the pull zone's security key. BunnyMate then signs every playback URL with an expiring token, and `signedUrlDuration` controls how long each stays valid — a number of seconds, or a date interval string like `'PT1H'`, whichever reads better.
 
+HLS URLs carry their token in the path rather than the query string, as a `bcdn_token=…` segment ahead of the video's own path. Bunny's playlists refer to their renditions, audio and segments by relative URL, and a query string doesn't survive being resolved against, so a token there would only ever reach the master playlist. In the path, every request the player makes after it carries the token too. The token covers the video's whole directory, so it's one token for the lot.
+
 A token is the URL-safe base64 of `SHA256(securityKey + path + expires)`, and it covers exactly the path it was signed over. BunnyMate signs each URL as narrowly as it can: an MP4 rendition's token opens that rendition and nothing else.
 
 HLS is the exception. A master playlist only names per-rendition sub-playlists, and those name segments, each fetched as its own request with no query string inherited from the manifest. So an HLS URL is signed over the video's directory instead, which Bunny extends to everything beneath it, nested paths included. BunnyMate's player then puts the same token back onto every request hls.js makes.

@@ -213,7 +213,9 @@ class BunnyVideo extends Model
             return null;
         }
         // Directory-scoped: the playlist only names sub-playlists and segments, each of
-        // which is fetched separately and needs to be covered by the same token
+        // which is fetched separately and needs to be covered by the same token. On a
+        // token-authenticated library that token goes in the path rather than the query
+        // string, since the playlists refer to those files by relative URL.
         return $this->getLibrary()->getVideoUrl($this->videoGuid, 'playlist.m3u8', defer: true, directory: true);
     }
 
