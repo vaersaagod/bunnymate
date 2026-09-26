@@ -214,7 +214,9 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 {{ asset.getBunnyVideoTag() }}
 ```
 
-What comes out is a plain `<video>` with two sources — the HLS playlist and an MP4 rendition — and an `aspect-ratio` style so the page doesn't jump once metadata arrives. There's no poster unless you ask for one with `poster: true`, since a poster is a whole extra image request and templates that want one usually want it transformed. With JavaScript off, or blocked, iOS plays the HLS source natively and everything else falls back to the MP4 — the tag degrades on its own. Where `hlsJsUrl` is set, a small script attaches hls.js as the video approaches the viewport, giving adaptive playback everywhere hls.js can run. It's only registered when the tag actually needs it.
+What comes out is a plain `<video>` with two sources — the HLS playlist and an MP4 rendition — and an `aspect-ratio` style so the page doesn't jump once metadata arrives. There's no poster unless you ask for one with `poster: true`, since a poster is a whole extra image request and templates that want one usually want it transformed. Where `hlsJsUrl` is set, a small script attaches hls.js as the video approaches the viewport, giving adaptive playback everywhere hls.js can run, and hands the HLS source to the browser where it can't, as on iOS. It's only registered when the tag actually needs it.
+
+Until that script has run, the HLS source is held back in `data-src`, and a tag that isn't lazyloaded renders with `preload="none"`, keeping the real value in `data-bunnymate-preload`. A browser picks its source as the markup is parsed, and Chrome now plays HLS natively, so otherwise it would start fetching the playlist, or preloading the MP4, only for hls.js to take over and cancel it. With JavaScript off, or blocked, the tag still degrades on its own: the MP4 plays when asked to. Without `hlsJsUrl`, or with `hls: false`, none of this applies, and the browser plays the HLS source natively where it can, as before.
 
 ```twig
 {# A muted background loop: MP4 only, because for a silent loop a fixed rendition

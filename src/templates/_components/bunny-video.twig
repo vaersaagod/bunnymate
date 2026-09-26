@@ -1,6 +1,8 @@
-{# Bunny publishes no player component, so this is a plain <video> with two sources: Safari
-   plays the HLS playlist natively, everything else falls back to the MP4 without any
-   JavaScript at all. hls.js, when configured, upgrades the rest to adaptive playback. #}
+{# Bunny publishes no player component, so this is a plain <video> with two sources: a
+   browser with native HLS plays the playlist, everything else falls back to the MP4 without
+   any JavaScript at all. hls.js, when configured, upgrades the rest to adaptive playback, and
+   the HLS source is then held in data-src (deferHls) for the player script to hand to either
+   hls.js or the browser, so the browser doesn't start on it before the script decides. #}
 
 {% set sources = [] %}
 {% if hlsUrl %}
@@ -15,7 +17,7 @@
         <video>
             {% for source in sources %}
                 {# Held in data-src when lazyloading, so nothing downloads until it's in view #}
-                {% if lazyload %}
+                {% if lazyload or (deferHls and source.type == 'application/x-mpegURL') %}
                     <source data-src="{{ source.src }}" type="{{ source.type }}">
                 {% else %}
                     <source src="{{ source.src }}" type="{{ source.type }}">

@@ -1,5 +1,10 @@
 # BunnyMate Changelog
 
+## Unreleased
+
+### Fixed
+- Fixed browsers fetching a video twice where hls.js is configured. A browser picks its source as the markup is parsed, and Chrome now plays HLS natively, so it started fetching the playlist and its first segments before hls.js attached and they were cancelled. The HLS source is now held in `data-src` until the player script has chosen between hls.js and the browser, and a tag that isn't lazyloaded doesn't preload until then. Without JavaScript, the MP4 source still plays.
+
 ## 3.2.1 - 2026-09-26
 
 ### Fixed

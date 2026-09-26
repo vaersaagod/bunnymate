@@ -1050,11 +1050,24 @@ class BunnyMate extends Plugin
 
         $attributes = array_merge($attributes, $options['attributes'] ?? []);
 
+        // The script decides between hls.js and native HLS, but a browser picks its source as
+        // the markup is parsed, long before that. Chrome now plays HLS natively, so it would
+        // start fetching the playlist, and with `preload` the MP4 fallback, only for hls.js to
+        // take over and cancel it all. So the HLS source is held back (see the template), and
+        // a tag that isn't lazyloaded doesn't preload until the script has chosen. Without
+        // JavaScript, the MP4 still plays when asked to.
+        $preload = $attributes['preload'] ?? null;
+        if ($loadHlsJs && !$lazyload && is_string($preload) && $preload !== 'none') {
+            $attributes['data-bunnymate-preload'] = $preload;
+            $attributes['preload'] = 'none';
+        }
+
         $html = $view->renderTemplate('bunnymate/_components/bunny-video', [
             'hlsUrl' => $useHls ? $video->getHlsUrl() : null,
             'mp4Url' => $video->getMp4Url($options['resolution'] ?? $settings->videoUrlRendition),
             'attributes' => array_filter($attributes, static fn($value): bool => $value !== false && $value !== null),
             'lazyload' => $lazyload,
+            'deferHls' => $loadHlsJs,
             // Rendered in control panel mode because that's the only template root a plugin
             // gets by default; the markup it produces is plain front-end HTML
         ], View::TEMPLATE_MODE_CP);

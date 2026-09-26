@@ -25,17 +25,45 @@
   }
 
   /**
-   * Moves data-src onto src, which is what actually starts any downloading.
+   * Returns whether playback has already begun, e.g. the viewer pressed play on the MP4
+   * before this script got to the video. Anything that would reset the element leaves it be.
+   */
+  function hasStarted(video) {
+    return !video.paused || video.currentTime > 0;
+  }
+
+  /**
+   * Puts back the preload the tag was rendered with, which is held in data-bunnymate-preload
+   * until a source has been chosen so the browser doesn't start on the wrong one.
+   */
+  function restorePreload(video) {
+    var preload = video.getAttribute('data-bunnymate-preload');
+    if (preload !== null) {
+      video.setAttribute('preload', preload);
+      video.removeAttribute('data-bunnymate-preload');
+    }
+  }
+
+  /**
+   * Moves data-src onto src, which is what actually starts any downloading, and has the
+   * browser choose between the sources again.
    */
   function activate(video) {
+    var moved = false;
     sourcesOf(video).forEach(function (source) {
       var src = source.getAttribute('data-src');
       if (src) {
         source.setAttribute('src', src);
         source.removeAttribute('data-src');
+        moved = true;
       }
     });
-    video.load();
+    restorePreload(video);
+    // Only when there was something to move: load() resets the element, which would interrupt
+    // playback that started without us
+    if (moved && !hasStarted(video)) {
+      video.load();
+    }
   }
 
   function hlsSource(video) {
@@ -136,17 +164,23 @@
   }
 
   /**
-   * Attaches hls.js to a video, so browsers without native HLS get adaptive playback rather
-   * than the capped MP4 rendition the markup falls back to.
+   * Attaches hls.js to a video, for adaptive playback that behaves the same in every browser
+   * with Media Source Extensions.
+   *
+   * The HLS source stays in data-src throughout, so the browser never starts on it itself.
+   * If hls.js can't be loaded or can't run here, the sources are handed to the browser
+   * instead, and it plays whichever it can.
    */
   function attachHls(video, url) {
     var src = hlsSource(video);
     if (!src) {
+      activate(video);
       return;
     }
     loadHlsJs(url)
       .then(function () {
-        if (!window.Hls || !window.Hls.isSupported()) {
+        if (!window.Hls || !window.Hls.isSupported() || hasStarted(video)) {
+          activate(video);
           return;
         }
         var Hls = window.Hls;
@@ -174,9 +208,10 @@
         hls.loadSource(src);
         hls.attachMedia(video);
         video.bunnymateHls = hls;
+        restorePreload(video);
       })
       .catch(function () {
-        // The MP4 source in the markup already covers this; nothing more to do
+        activate(video);
       });
   }
 
@@ -186,17 +221,14 @@
     }
     video.bunnymateReady = true;
 
-    // Only a lazyloaded tag has sources to move. Calling load() on one that already has its
-    // src would reset the element, interrupting playback that may have started without us.
-    if (video.getAttribute('data-bunnymate-lazyload') !== null) {
-      activate(video);
-    }
-
-    // Where hls.js can't run, the markup already covers it: iOS WebKit plays the HLS source
-    // natively, and anything else falls through to the MP4
+    // Where hls.js can run, it's given the HLS source without the browser ever seeing it.
+    // Anywhere else -- iOS WebKit, which plays HLS natively, or a tag without hls.js -- the
+    // held-back sources go to the browser, which plays the first it can.
     var hlsJsUrl = video.getAttribute('data-bunnymate-hls');
     if (hlsJsUrl && canUseHlsJs()) {
       attachHls(video, hlsJsUrl);
+    } else {
+      activate(video);
     }
   }
 
