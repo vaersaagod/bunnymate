@@ -512,7 +512,7 @@ class Videos extends Component
         // Craft derives the MIME type from the filename otherwise, and these are renamed to
         // .mp4, so it's already right; setting it explicitly keeps it that way if that changes
         if ($asset->mimeType !== 'video/mp4') {
-            $asset->mimeType = 'video/mp4';
+            $asset->setMimeType('video/mp4');
             $changed = true;
         }
 
