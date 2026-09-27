@@ -1,6 +1,6 @@
 # BunnyMate Changelog
 
-## Unreleased
+## 3.3.0 - 2026-09-27
 
 ### Added
 - Added the `downloadPath` setting. Front-end download links now use a route of their own, e.g. `/bunnymate/download/{videoGuid}/720p`, instead of an action URL. Set it to `null` for the action URL, or to an array keyed by site handle for a path per site. Control panel downloads still use action URLs.
