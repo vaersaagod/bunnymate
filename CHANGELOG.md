@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+- Added the `downloadPath` setting. Front-end download links now use a route of their own, e.g. `/bunnymate/download/{videoGuid}/720p`, instead of an action URL. Set it to `null` for the action URL, or to an array keyed by site handle for a path per site. Control panel downloads still use action URLs.
+- Added `asset.bunnyVideo.hasPublicUrls`.
+
+### Changed
+- Front-end downloads are now identified by the video's GUID rather than the asset's ID, and the download controller no longer accepts an asset ID from the front end. Sequential IDs let anyone count through the downloads and fetch every video. Front-end downloads from a volume whose filesystem has no public URLs are refused too, and `downloadUrl` returns null for them on the front end. Control panel downloads still take an asset ID, since they're checked against the asset's permissions.
+
 ### Fixed
 - Fixed downloads of MP4 renditions (`downloadUrl(resolution)`) failing with a 404 when `deferSignedUrls` is on. The download controller fetches the file from Bunny itself, but asked for the rendition's URL the way a template would, which on a site request carries a placeholder token rather than a real one, so Bunny refused it. Downloads of the original file were unaffected.
 

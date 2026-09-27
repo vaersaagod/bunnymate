@@ -117,6 +117,7 @@ class BunnyMate extends Plugin
         $this->_registerFsTypes();
         $this->_registerVideoBehaviors();
         $this->_registerWebhookRoute();
+        $this->_registerDownloadRoute();
         $this->_registerAssetUrlOverride();
         $this->_registerAssetCleanup();
         $this->_registerVideoAutoUpload();
@@ -300,6 +301,34 @@ class BunnyMate extends Plugin
             UrlManager::EVENT_REGISTER_SITE_URL_RULES,
             static function (RegisterUrlRulesEvent $event) {
                 $event->rules['bunnymate/webhook'] = 'bunnymate/webhook';
+            }
+        );
+    }
+
+    /**
+     * Registers the front-end download route, e.g. `/bunnymate/download/{videoGuid}/720p`.
+     *
+     * The route's params become query params, so the controller reads them the same way whether
+     * a download comes in on this route or on an action URL.
+     *
+     * The rules are built on every request, once the site has been worked out from the URL, so
+     * only the current site's path is registered when `downloadPath` differs per site.
+     *
+     * @return void
+     */
+    private function _registerDownloadRoute(): void
+    {
+        Event::on(
+            UrlManager::class,
+            UrlManager::EVENT_REGISTER_SITE_URL_RULES,
+            function (RegisterUrlRulesEvent $event) {
+                $path = $this->getSettings()->getDownloadPath();
+                if ($path === null) {
+                    return;
+                }
+                $guid = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
+                $event->rules["$path/<videoGuid:$guid>"] = 'bunnymate/download/video';
+                $event->rules["$path/<videoGuid:$guid>/<resolution:\\d+p>"] = 'bunnymate/download/video';
             }
         );
     }

@@ -199,6 +199,7 @@ Every payload is verified as an HMAC-SHA256 of the raw request body, keyed on th
 | `downloadUrl` | The same file, served as a download with its original filename |
 | `downloadUrl(resolution)` | An MP4 rendition, served as a download. Null for a rendition that wasn't produced. |
 | `originalSize` | The original file's size in bytes. Null when the library doesn't keep originals. |
+| `hasPublicUrls` | Whether the video's volume has public URLs. Front-end downloads need it. |
 | `mp4Size(resolution)` / `mp4Sizes` | An MP4 rendition's size in bytes, or all of them keyed by resolution. See [Download lists](#download-lists). |
 | `originalFilename` | What the file was uploaded as, before being renamed to `.mp4` |
 | `width`, `height`, `length`, `encodeProgress` | Metadata from Bunny |
@@ -505,7 +506,18 @@ Where a library keeps original files, Bunny serves the upload back untouched, an
 
 Use `downloadUrl` rather than `originalUrl` for anything meant to save the file. Bunny serves originals as `video/mp4` with no `Content-Disposition`, and offers no way to change that: no query parameter sets it and the pull zone has no setting for it. A `download` attribute doesn't help either, since browsers ignore it cross-origin, so `originalUrl` opens the video in the browser rather than saving it.
 
-`downloadUrl` goes through Craft, which sets the header and the filename and streams the file on from Bunny. Because uploads are renamed to `.mp4`, the filename it uses is the one the file was uploaded as, kept alongside the video's metadata; videos uploaded before that was recorded fall back to the asset's filename.
+`downloadUrl` goes through Craft, which sets the header and the filename and streams the file on from Bunny. On the front end it's a route of its own, `/bunnymate/download/{videoGuid}` for the original and `/bunnymate/download/{videoGuid}/{resolution}` for a rendition, e.g. `/bunnymate/download/63e9c76d-3631-433c-8d4f-95d360d6ad4b/720p`. Change the prefix with `downloadPath`, or set that to `null` for a plain action URL. It can differ per site, with an array keyed by site handle:
+
+```php
+'downloadPath' => [
+    'norwegian' => 'fotoarkiv/last-ned',
+    'english' => 'photo-archive/download',
+],
+```
+
+A site that isn't listed uses the `'*'` entry, if there is one, and an action URL if not. In the control panel it's always an action URL, since control panel downloads are checked against the asset's permissions rather than `allowOriginalDownloads`.
+
+Front-end downloads are identified by the video's GUID, never by the asset's ID, and the download controller refuses an ID from the front end. They're open to anyone while `allowOriginalDownloads` is on, and sequential IDs would let someone count through them and download every video there is. A GUID is random, and already public in every playback URL. A volume whose filesystem is set to have no public URLs doesn't serve front-end downloads either, and `downloadUrl` returns null for its videos on the front end, so templates can leave the link out. `hasPublicUrls` says which it is. Because uploads are renamed to `.mp4`, the filename it uses is the one the file was uploaded as, kept alongside the video's metadata; videos uploaded before that was recorded fall back to the asset's filename.
 
 #### Download lists
 
@@ -703,6 +715,7 @@ Every setting goes in `config/bunnymate.php`. Credentials and hostnames can be e
 | `lazyloadBunnyVideo` | `true` | Whether rendered video tags hold their sources in `data-src` until scrolled into view |
 | `deferSignedUrls` | `false` | Whether signed playback URLs are signed as the response goes out rather than when rendered, so an expiring token never lands in a `{% cache %}` block. See [Access control](#access-control). |
 | `allowOriginalDownloads` | `true` | Whether original files can be downloaded from the front end. Control panel downloads aren't affected. |
+| `downloadPath` | `'bunnymate/download'` | Where front-end downloads are served from: `downloadUrl` points at `/{downloadPath}/{videoGuid}`, plus `/{resolution}` for a rendition. `null` uses an action URL instead. An array keyed by site handle sets a path per site, with `'*'` as the fallback. See [The original file](#the-original-file). |
 | `useImagerForThumbnailTransforms` | `true` | Whether control panel thumbnails are resized with Imager X, where it's installed. See [Control panel thumbnails](#control-panel-thumbnails). |
 | `imagerTransformDefaults` | `null` | Passed to Imager's `transformImage()` as transform defaults when resizing a thumbnail |
 | `imagerTransformConfigOverrides` | `null` | Passed to Imager's `transformImage()` as config overrides when resizing a thumbnail. `curlOptions` merges with the referrer BunnyMate sets. |

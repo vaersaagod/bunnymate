@@ -88,6 +88,13 @@ return [
     // way the MP4 renditions are, so this serves the full-resolution master to anyone who asks.
     'allowOriginalDownloads' => true,
 
+    // Where front-end downloads are served from: downloadUrl points at /{downloadPath}/{videoGuid},
+    // plus /{resolution} for an MP4 rendition. Null uses a plain action URL instead. Control
+    // panel downloads always use an action URL. An array sets a path per site, keyed by site
+    // handle, e.g. ['norwegian' => 'fotoarkiv/last-ned', 'english' => 'photo-archive/download'],
+    // with '*' as the fallback for sites that aren't listed.
+    'downloadPath' => 'bunnymate/download',
+
     // Whether to resize control panel thumbnails with Imager X, when it's installed
     'useImagerForThumbnailTransforms' => true,
 

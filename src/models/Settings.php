@@ -2,7 +2,9 @@
 
 namespace vaersaagod\bunnymate\models;
 
+use Craft;
 use craft\base\Model;
+use craft\models\Site;
 
 /**
  * BunnyMate settings model
@@ -179,6 +181,22 @@ class Settings extends Model
     public bool $allowOriginalDownloads = true;
 
     /**
+     * @var string|array<string, string|null>|null The path front-end downloads are served from.
+     *
+     * `downloadUrl` then points at `/{downloadPath}/{videoGuid}` for the original and
+     * `/{downloadPath}/{videoGuid}/{resolution}` for an MP4 rendition, on the current site. Set to
+     * null to use a plain action URL instead. Control panel downloads always use an action URL,
+     * since they're gated on the asset's own permissions rather than `allowOriginalDownloads`.
+     *
+     * An array sets a path per site, keyed by site handle, e.g.
+     * `['norwegian' => 'fotoarkiv/last-ned', 'english' => 'photo-archive/download']`. A site that
+     * isn't listed uses the `'*'` entry if there is one, and an action URL if not.
+     *
+     * @since 3.3.0
+     */
+    public string|array|null $downloadPath = 'bunnymate/download';
+
+    /**
      * @var bool Whether control panel thumbnails should be resized with Imager X, when it's
      * installed.
      *
@@ -246,5 +264,31 @@ class Settings extends Model
      * @since 2.1.0
      */
     public bool $purgeEnabled = true;
+
+
+    /**
+     * Returns a site's download path with its slashes trimmed, or null if its downloads use
+     * action URLs.
+     *
+     * @param Site|null $site Defaults to the current site
+     * @return string|null
+     * @since 3.3.0
+     */
+    public function getDownloadPath(?Site $site = null): ?string
+    {
+        $path = $this->downloadPath;
+
+        if (is_array($path)) {
+            try {
+                $site ??= Craft::$app->getSites()->getCurrentSite();
+            } catch (\Throwable) {
+                return null;
+            }
+            $path = $path[$site->handle] ?? $path['*'] ?? null;
+        }
+
+        $path = trim((string)$path, '/');
+        return $path !== '' ? $path : null;
+    }
 
 }

@@ -4,9 +4,11 @@ namespace vaersaagod\bunnymate\controllers;
 
 use Craft;
 use craft\elements\Asset;
+use craft\helpers\StringHelper;
 use craft\web\Controller;
 
 use vaersaagod\bunnymate\BunnyMate;
+use vaersaagod\bunnymate\models\BunnyVideo;
 
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
@@ -42,34 +44,28 @@ class DownloadController extends Controller
      * With no resolution, that's the originally uploaded file. With one, it's that MP4
      * rendition.
      *
+     * The params arrive as arguments rather than being read off the request: Craft passes a
+     * route's params (from the `downloadPath` route) to the action this way, but doesn't add them
+     * to the query string. Yii fills the arguments from the query string too, so an action URL
+     * works the same.
+     *
+     * @param string|null $videoGuid Identifies the video on the front end
+     * @param string|null $assetId Identifies the asset in the control panel
+     * @param string|null $resolution An MP4 rendition, e.g. `720p`, or null for the original
      * @return Response
      * @throws BadRequestHttpException
      * @throws ForbiddenHttpException if downloads aren't allowed from the front end
      * @throws NotFoundHttpException if the file isn't available
      */
-    public function actionVideo(): Response
+    public function actionVideo(?string $videoGuid = null, ?string $assetId = null, ?string $resolution = null): Response
     {
         $request = Craft::$app->getRequest();
-        $assetId = (int)$request->getRequiredParam('assetId');
-        $resolution = $request->getParam('resolution') ?: null;
+        $resolution = $resolution ?: null;
 
-        $asset = Craft::$app->getAssets()->getAssetById($assetId);
-        if (!$asset) {
-            throw new NotFoundHttpException("Invalid asset ID: $assetId");
-        }
-
-        // Control panel requests are gated on the asset's own permissions. Site requests are
-        // gated on a setting, since this serves the full-resolution master to anyone who asks.
-        if ($request->getIsCpRequest()) {
-            $this->requirePermission('viewAssets:' . $asset->getVolume()->uid);
-        } elseif (!BunnyMate::getInstance()->getSettings()->allowOriginalDownloads) {
-            throw new ForbiddenHttpException('Original downloads aren’t allowed.');
-        }
-
-        $video = BunnyMate::getInstance()->getVideos()->getVideoForAsset($asset);
-        if (!$video) {
-            throw new NotFoundHttpException('This asset has no Bunny Stream video.');
-        }
+        [$asset, $video] = $request->getIsCpRequest()
+            ? $this->_resolveCpDownload($assetId)
+            : $this->_resolveSiteDownload($videoGuid);
+        $assetId = $asset->id;
 
         // Both are signed now rather than deferred, since the file is fetched from here and not by
         // the browser: getMp4Url() defers on site requests, and a placeholder token reaching
@@ -127,6 +123,87 @@ class DownloadController extends Controller
     // =========================================================================
 
     /**
+     * Finds what a control panel download is for, by asset ID.
+     *
+     * An ID gives nothing away here: control panel downloads are gated on the asset's own
+     * permissions, so only someone who could open the asset anyway gets anything.
+     *
+     * @param string|null $assetId
+     * @return array{0: Asset, 1: BunnyVideo}
+     * @throws BadRequestHttpException
+     * @throws ForbiddenHttpException
+     * @throws NotFoundHttpException
+     */
+    private function _resolveCpDownload(?string $assetId): array
+    {
+        if (empty($assetId)) {
+            throw new BadRequestHttpException('Request missing required param: assetId');
+        }
+        $assetId = (int)$assetId;
+
+        $asset = Craft::$app->getAssets()->getAssetById($assetId);
+        if (!$asset) {
+            throw new NotFoundHttpException("Invalid asset ID: $assetId");
+        }
+
+        $this->requirePermission('viewAssets:' . $asset->getVolume()->uid);
+
+        $video = BunnyMate::getInstance()->getVideos()->getVideoForAsset($asset);
+        if (!$video) {
+            throw new NotFoundHttpException('This asset has no Bunny Stream video.');
+        }
+
+        return [$asset, $video];
+    }
+
+    /**
+     * Finds what a front-end download is for, by video GUID.
+     *
+     * Only the GUID is accepted here, never an asset ID: front-end downloads are open to anyone
+     * while `allowOriginalDownloads` is on, and sequential IDs would let them be counted through
+     * to download every video there is. A GUID is random, is already public in every playback
+     * URL, and is a single indexed lookup in BunnyMate's own table. The asset's volume also has to
+     * have public URLs.
+     *
+     * @param string|null $videoGuid
+     * @return array{0: Asset, 1: BunnyVideo}
+     * @throws BadRequestHttpException
+     * @throws ForbiddenHttpException
+     * @throws NotFoundHttpException
+     */
+    private function _resolveSiteDownload(?string $videoGuid): array
+    {
+        // Gated on a setting, since this serves the full-resolution master to anyone who asks
+        if (!BunnyMate::getInstance()->getSettings()->allowOriginalDownloads) {
+            throw new ForbiddenHttpException('Original downloads aren’t allowed.');
+        }
+
+        if (empty($videoGuid)) {
+            throw new BadRequestHttpException('Request missing required param: videoGuid');
+        }
+        if (!StringHelper::isUUID($videoGuid)) {
+            throw new NotFoundHttpException('Invalid video.');
+        }
+
+        $video = BunnyMate::getInstance()->getVideos()->getVideoByGuid($videoGuid);
+        $asset = $video && $video->assetId !== null
+            ? Asset::find()->id($video->assetId)->one()
+            : null;
+        if (!$video || !$asset) {
+            throw new NotFoundHttpException('Invalid video.');
+        }
+
+        // A volume whose files have no public URLs keeps them off the front end, and its
+        // downloads with them. The same check decides whether downloadUrl links here at all.
+        // Answered the same as an unknown video, so it gives nothing away.
+        if (!$video->getHasPublicUrls()) {
+            throw new NotFoundHttpException('Invalid video.');
+        }
+
+        return [$asset, $video];
+    }
+
+    /**
      * Returns the filename a download should be saved as.
      *
      * The original keeps the name it was uploaded under, since the asset itself was renamed to
@@ -134,11 +211,11 @@ class DownloadController extends Controller
      * them can be downloaded without overwriting each other.
      *
      * @param Asset $asset
-     * @param \vaersaagod\bunnymate\models\BunnyVideo $video
+     * @param BunnyVideo $video
      * @param string|null $resolution
      * @return string
      */
-    private function _filename(Asset $asset, $video, ?string $resolution): string
+    private function _filename(Asset $asset, BunnyVideo $video, ?string $resolution): string
     {
         if ($resolution === null) {
             return $video->getOriginalFilename() ?? $asset->getFilename();

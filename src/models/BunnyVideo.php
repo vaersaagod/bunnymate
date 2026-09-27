@@ -4,6 +4,8 @@ namespace vaersaagod\bunnymate\models;
 
 use Craft;
 use craft\base\Model;
+use craft\db\Query;
+use craft\db\Table;
 use craft\helpers\Json;
 use craft\helpers\UrlHelper;
 
@@ -33,6 +35,7 @@ use yii\base\InvalidConfigException;
  * @property-read string|null $downloadUrl
  * @property-read int|null $originalSize
  * @property-read array<string, int> $mp4Sizes
+ * @property-read bool $hasPublicUrls
  * @property-read float|null $aspectRatio
  * @property-read array $mp4Sources
  *
@@ -94,6 +97,9 @@ class BunnyVideo extends Model
 
     /** @var VideoLibrary|null */
     private ?VideoLibrary $_library = null;
+
+    /** @var bool|null Memoized result of getHasPublicUrls() */
+    private ?bool $_hasPublicUrls = null;
 
     // Public Methods
     // =========================================================================
@@ -479,7 +485,14 @@ class BunnyVideo extends Model
      * help either, since it's ignored cross-origin. This URL goes through Craft, which sets the
      * header and the filename and streams the file on from Bunny.
      *
-     * @return string|null Null when the library doesn't keep originals
+     * On the front end it's a route like `/bunnymate/download/{videoGuid}/720p` (see the
+     * `downloadPath` setting), keyed on the video's GUID so downloads can't be counted through
+     * by ID. In the control panel it's always an action URL with the asset's ID: the controller
+     * gates control panel downloads on the asset's permissions, and a site URL would be gated
+     * as a front-end one instead.
+     *
+     * @return string|null Null when the library doesn't keep originals, when the rendition doesn't
+     *                     exist, or on the front end when the volume has no public URLs
      */
     public function getDownloadUrl(?string $resolution = null): ?string
     {
@@ -493,12 +506,65 @@ class BunnyVideo extends Model
             return null;
         }
 
-        $params = ['assetId' => $this->assetId];
-        if ($resolution !== null) {
-            $params['resolution'] = $resolution;
+        // The control panel identifies the asset by ID, which its permission check makes safe. The
+        // front end uses the video's GUID instead, which can't be guessed or counted through.
+        if (Craft::$app->getRequest()->getIsCpRequest()) {
+            return UrlHelper::actionUrl('bunnymate/download/video', array_filter([
+                'assetId' => $this->assetId,
+                'resolution' => $resolution,
+            ]));
         }
 
-        return UrlHelper::actionUrl('bunnymate/download/video', $params);
+        // No link to a download the controller would refuse
+        if (!$this->getHasPublicUrls()) {
+            return null;
+        }
+
+        $path = BunnyMate::getInstance()->getSettings()->getDownloadPath();
+        if ($path !== null) {
+            return UrlHelper::siteUrl(implode('/', array_filter([$path, $this->videoGuid, $resolution])));
+        }
+
+        return UrlHelper::actionUrl('bunnymate/download/video', array_filter([
+            'videoGuid' => $this->videoGuid,
+            'resolution' => $resolution,
+        ]));
+    }
+
+    /**
+     * Returns whether the video's asset is in a volume whose files have public URLs.
+     *
+     * Front-end downloads are only linked to, and only served, when it is: a volume set to have
+     * no public URLs keeps its files off the front end, and its downloads with them. Worked out
+     * once per video, from the asset's volume ID, without loading the asset.
+     *
+     * @return bool
+     * @since 3.3.0
+     */
+    public function getHasPublicUrls(): bool
+    {
+        if ($this->_hasPublicUrls !== null) {
+            return $this->_hasPublicUrls;
+        }
+        if ($this->assetId === null) {
+            return $this->_hasPublicUrls = false;
+        }
+
+        $volumeId = (new Query())
+            ->select(['volumeId'])
+            ->from([Table::ASSETS])
+            ->where(['id' => $this->assetId])
+            ->scalar();
+
+        try {
+            $volume = $volumeId ? Craft::$app->getVolumes()->getVolumeById((int)$volumeId) : null;
+            $hasUrls = $volume !== null && $volume->getFs()->hasUrls;
+        } catch (\Throwable $e) {
+            Craft::error("Unable to check the filesystem for asset $this->assetId: {$e->getMessage()}", __METHOD__);
+            $hasUrls = false;
+        }
+
+        return $this->_hasPublicUrls = $hasUrls;
     }
 
     /**
