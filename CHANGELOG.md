@@ -1,5 +1,10 @@
 # BunnyMate Changelog
 
+## Unreleased
+
+### Fixed
+- Fixed downloads of MP4 renditions (`downloadUrl(resolution)`) failing with a 404 when `deferSignedUrls` is on. The download controller fetches the file from Bunny itself, but asked for the rendition's URL the way a template would, which on a site request carries a placeholder token rather than a real one, so Bunny refused it. Downloads of the original file were unaffected.
+
 ## 3.2.2 - 2026-09-26
 
 ### Fixed

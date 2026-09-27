@@ -71,14 +71,19 @@ class DownloadController extends Controller
             throw new NotFoundHttpException('This asset has no Bunny Stream video.');
         }
 
+        // Both are signed now rather than deferred, since the file is fetched from here and not by
+        // the browser: getMp4Url() defers on site requests, and a placeholder token reaching
+        // Bunny from the server gets a 403
         if ($resolution !== null) {
             if (!in_array($resolution, $video->getAvailableMp4Resolutions(), true)) {
                 throw new NotFoundHttpException("This video has no $resolution rendition.");
             }
-            $url = $video->getMp4Url($resolution);
+            $url = $video->getLibrary()->getVideoUrl($video->videoGuid, "play_$resolution.mp4");
         } else {
             $url = $video->getOriginalUrl();
         }
+
+        $file = $resolution !== null ? "the $resolution rendition" : 'the original';
 
         if ($url === null) {
             throw new NotFoundHttpException('This file isn’t available.');
@@ -94,13 +99,13 @@ class DownloadController extends Controller
                 ],
             ]);
         } catch (\Throwable $e) {
-            Craft::error("Unable to fetch the original for asset $assetId: {$e->getMessage()}", __METHOD__);
-            throw new NotFoundHttpException('This asset’s original file couldn’t be fetched.');
+            Craft::error("Unable to fetch $file for asset $assetId: {$e->getMessage()}", __METHOD__);
+            throw new NotFoundHttpException('This file couldn’t be fetched.');
         }
 
         if ($response->getStatusCode() !== 200) {
-            Craft::error("Bunny returned HTTP {$response->getStatusCode()} for the original of asset $assetId", __METHOD__);
-            throw new NotFoundHttpException('This asset’s original file couldn’t be fetched.');
+            Craft::error("Bunny returned HTTP {$response->getStatusCode()} for $file of asset $assetId", __METHOD__);
+            throw new NotFoundHttpException('This file couldn’t be fetched.');
         }
 
         $filename = $this->_filename($asset, $video, $resolution);
